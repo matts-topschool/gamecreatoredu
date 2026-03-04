@@ -139,6 +139,19 @@ The platform aims to:
 | Mar 4, 2026 | GameCanvas Component | React wrapper with HUD and question overlay |
 | Mar 4, 2026 | Telemetry System | Event tracking for learning analytics |
 
+### March 2026 - Phase 2B: AI Compiler & Visual Editor
+
+| Date | Item | Details |
+|------|------|---------|
+| Mar 4, 2026 | AI Compiler Service | Claude-powered game generation via Emergent LLM Key |
+| Mar 4, 2026 | AI Router | /api/ai/compile, /api/ai/refine, /api/ai/generate-questions |
+| Mar 4, 2026 | StudioNew AI UI | Prompt-based game creation with live preview |
+| Mar 4, 2026 | Visual Editor | StudioEditor.jsx with tabbed interface |
+| Mar 4, 2026 | LivePreview | Real-time game preview component |
+| Mar 4, 2026 | Question Editor | Expandable cards with full field editing |
+| Mar 4, 2026 | Spec Update API | PUT /api/games/:id/spec with versioning |
+| Mar 4, 2026 | JWT Persistence | Fixed auth token persistence on page refresh |
+
 ---
 
 ## Prioritized Backlog
@@ -161,18 +174,20 @@ The platform aims to:
 - [x] React GameCanvas component
 - [x] Telemetry/analytics tracking
 
-### Phase 2B: AI Compiler & Preview (NEXT)
-- [ ] Claude integration for game generation
-- [ ] Streaming AI responses
-- [ ] GameSpec validator
-- [ ] Game Builder UI (visual editor)
-- [ ] Live game preview component
+### Phase 2B: AI Compiler & Preview (COMPLETED)
+- [x] Claude integration for game generation
+- [x] AI Compile API endpoint (/api/ai/compile)
+- [x] GameSpec validator
+- [x] Game Builder UI (visual editor) - StudioEditor.jsx
+- [x] Live game preview component - LivePreview.jsx
+- [x] Question editing with expandable cards
+- [x] Spec update persistence API
+- [x] AI Refine feature (UI complete, budget-limited)
 
-### Phase 3: Game Runtime
-- [ ] Session model and routes
-- [ ] Game Engine (frontend)
-- [ ] Question gameplay
-- [ ] Leaderboard
+### Phase 2C: Game Runtime (NEXT)
+- [ ] Game Engine (frontend runtime)
+- [ ] Question gameplay mechanics
+- [ ] Score tracking during play
 - [ ] Player join flow
 
 ### Phase 4: Dashboard
