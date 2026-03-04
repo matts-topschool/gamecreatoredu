@@ -321,7 +321,8 @@ class GameUpdate(BaseModel):
 
 class GameSpecUpdate(BaseModel):
     """Schema for updating just the game spec."""
-    spec: GameSpec
+    # Accept raw dict to support AI-generated specs with extended fields
+    spec: Dict[str, Any]
 
 
 class GameInDB(GameBase):

@@ -17,6 +17,7 @@ import Signup from "@/pages/Signup";
 import Dashboard from "@/pages/Dashboard";
 import Studio from "@/pages/Studio";
 import StudioNew from "@/pages/StudioNew";
+import StudioEditor from "@/pages/StudioEditor";
 
 // Placeholder pages for Phase 1
 const Placeholder = ({ title }) => (
@@ -27,8 +28,6 @@ const Placeholder = ({ title }) => (
     </div>
   </div>
 );
-
-const StudioEditor = () => <Placeholder title="Game Editor" />;
 const DashboardGames = () => <Placeholder title="My Games" />;
 const DashboardSessions = () => <Placeholder title="Sessions" />;
 const DashboardClasses = () => <Placeholder title="Classes" />;

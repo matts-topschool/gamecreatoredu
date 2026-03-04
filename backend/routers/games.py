@@ -223,7 +223,7 @@ async def update_game_spec(
         {"id": game_id},
         {
             "$set": {
-                "spec": request.spec.model_dump(),
+                "spec": request.spec,
                 "updated_at": datetime.now(timezone.utc).isoformat()
             },
             "$inc": {"spec_version": 1}
