@@ -152,6 +152,18 @@ The platform aims to:
 | Mar 4, 2026 | Spec Update API | PUT /api/games/:id/spec with versioning |
 | Mar 4, 2026 | JWT Persistence | Fixed auth token persistence on page refresh |
 
+### March 2026 - Phase 2C: Game Runtime Engine
+
+| Date | Item | Details |
+|------|------|---------|
+| Mar 4, 2026 | GameRuntime Component | Scene-based quiz flow (Title -> Question -> Feedback -> Victory) |
+| Mar 4, 2026 | Play Page | /play/:gameId route with game loading and exit handling |
+| Mar 4, 2026 | Title Scene | Game info display with Start button |
+| Mar 4, 2026 | Question Scene | Timer countdown, progress bar, answer options, hint support |
+| Mar 4, 2026 | Feedback Scene | Correct/incorrect feedback with confetti, explanation display |
+| Mar 4, 2026 | Victory Scene | Final stats, accuracy, max combo, Play Again/Exit buttons |
+| Mar 4, 2026 | Score System | Base points + combo bonus + speed bonus mechanics |
+
 ---
 
 ## Prioritized Backlog
@@ -184,25 +196,28 @@ The platform aims to:
 - [x] Spec update persistence API
 - [x] AI Refine feature (UI complete, budget-limited)
 
-### Phase 2C: Game Runtime (NEXT)
-- [ ] Game Engine (frontend runtime)
-- [ ] Question gameplay mechanics
-- [ ] Score tracking during play
-- [ ] Player join flow
+### Phase 2C: Game Runtime (COMPLETED)
+- [x] GameRuntime component with scene-based flow
+- [x] Title scene with game info and Start button
+- [x] Question scene with timer, progress, and answer options
+- [x] Feedback scene with correct/incorrect feedback
+- [x] Victory scene with stats and confetti celebration
+- [x] Score system with base points, combo bonus, speed bonus
+- [x] Play page wrapper with game loading
 
-### Phase 4: Dashboard
-- [ ] Dashboard home (Bento grid)
+### Phase 3: Dashboard & Analytics (NEXT)
+- [ ] Dashboard home (Bento grid enhancements)
 - [ ] Session results view
 - [ ] Analytics charts
 - [ ] Export functionality
 
-### Phase 5: Marketplace
+### Phase 4: Marketplace
 - [ ] Marketplace listings model
 - [ ] Browse/search UI
 - [ ] Publish flow
 - [ ] Purchase flow (Stripe)
 
-### Phase 6: Classroom
+### Phase 5: Classroom
 - [ ] Class model
 - [ ] Google Classroom integration
 - [ ] Gradebook export
