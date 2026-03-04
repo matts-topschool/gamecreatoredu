@@ -18,6 +18,7 @@ import Dashboard from "@/pages/Dashboard";
 import Studio from "@/pages/Studio";
 import StudioNew from "@/pages/StudioNew";
 import StudioEditor from "@/pages/StudioEditor";
+import Play from "@/pages/Play";
 
 // Placeholder pages for Phase 1
 const Placeholder = ({ title }) => (
@@ -36,7 +37,6 @@ const Marketplace = () => <Placeholder title="Marketplace" />;
 const MarketplaceListing = () => <Placeholder title="Game Listing" />;
 const MarketplacePurchases = () => <Placeholder title="My Purchases" />;
 const Settings = () => <Placeholder title="Settings" />;
-const Play = () => <Placeholder title="Play Game" />;
 const PlaySession = () => <Placeholder title="Live Session" />;
 
 function App() {
