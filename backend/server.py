@@ -15,6 +15,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from core.config import settings
 from core.database import create_indexes, close_connection
 from routers import auth_router, games_router, users_router
+from routers.sessions import router as sessions_router
+from routers.analytics import router as analytics_router
 from schemas.common import HealthCheckResponse
 
 # Configure logging
@@ -64,6 +66,8 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api")
 app.include_router(games_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(sessions_router, prefix="/api")
+app.include_router(analytics_router, prefix="/api")
 
 
 # Root endpoint
