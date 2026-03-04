@@ -17,6 +17,7 @@ from core.database import create_indexes, close_connection
 from routers import auth_router, games_router, users_router
 from routers.sessions import router as sessions_router
 from routers.analytics import router as analytics_router
+from routers.ai import router as ai_router
 from schemas.common import HealthCheckResponse
 
 # Configure logging
@@ -68,6 +69,7 @@ app.include_router(games_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(sessions_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(ai_router, prefix="/api")
 
 
 # Root endpoint
