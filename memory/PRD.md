@@ -175,6 +175,21 @@ The platform aims to:
 | Mar 4, 2026 | Battle Config | damage_per_correct, bonus_per_combo, speed_bonus settings |
 | Mar 4, 2026 | Enemy Entities | Enemy name, health, taunt messages, defeat message |
 
+
+### March 2026 - Phase 3: Leaderboards & Classroom Management
+
+| Date | Item | Details |
+|------|------|---------|
+| Mar 4, 2026 | GameResult Model | Records score, accuracy, time, combo, damage for each play |
+| Mar 4, 2026 | PlayerHighScore Model | Tracks best scores per player per game |
+| Mar 4, 2026 | Leaderboard Router | Submit results, get leaderboards, player stats, rankings |
+| Mar 4, 2026 | Classroom Model | Classes with join codes, student enrollment, settings |
+| Mar 4, 2026 | Classes Router | Create/list/update classes, add/remove students |
+| Mar 4, 2026 | Join by Code | Students join classes using 8-char join code |
+| Mar 4, 2026 | Integration Framework | Abstract interfaces for Google Classroom, Canvas, Clever |
+| Mar 4, 2026 | Provider Stubs | GoogleClassroomProvider, CanvasProvider, CleverProvider |
+| Mar 4, 2026 | Play Page Integration | Auto-submits game results to leaderboard on completion |
+
 ---
 
 ## Prioritized Backlog
@@ -222,13 +237,15 @@ The platform aims to:
 - [x] Battle game spec with entities.enemy and battle_config
 - [x] Proper game_type preservation in backend models
 
-### Phase 3: Dashboard & Analytics (NEXT)
-- [ ] Dashboard home (Bento grid enhancements)
-- [ ] Session results view
-- [ ] Analytics charts
-- [ ] Export functionality
+### Phase 3: Dashboard & Analytics (COMPLETED)
+- [x] Game Results recording (submit scores to backend)
+- [x] Per-game leaderboards (top 10 scores, sortable by score/time/accuracy)
+- [x] Player stats aggregation (total games, avg score, best achievements)
+- [x] Classroom management (create classes, join codes)
+- [x] Student enrollment (add students, join via code)
+- [x] LMS/SIS integration framework (Google Classroom, Canvas, Clever, etc.)
 
-### Phase 4: Marketplace
+### Phase 4: Marketplace (NEXT)
 - [ ] Marketplace listings model
 - [ ] Browse/search UI
 - [ ] Publish flow
