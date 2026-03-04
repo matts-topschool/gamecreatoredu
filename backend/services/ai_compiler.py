@@ -1,5 +1,6 @@
 """
-AI Compiler Service - Generates GameSpecs from natural language prompts using Claude.
+AI Compiler Service - Generates GameSpecs from natural language prompts using OpenAI GPT-5.1.
+Supports flexible game types with distinct mechanics for each type.
 """
 import os
 import json
@@ -13,157 +14,182 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 logger = logging.getLogger(__name__)
 
+# Game type specific instructions
+GAME_TYPE_INSTRUCTIONS = {
+    "quiz": """
+For QUIZ games:
+- Focus on clean question-answer flow
+- Emphasize learning and explanation
+- Include varied difficulty progression
+- Support hints for struggling students
+- Simple scoring based on correctness
+""",
+    "battle": """
+For BATTLE games:
+- Create a compelling enemy/boss character related to the topic (e.g., "Fraction Fiend", "Grammar Goblin")
+- enemy.health should start at 100
+- Correct answers deal damage (base 10 + speed bonus + combo bonus)
+- Faster answers = more damage
+- Combo system: consecutive correct answers multiply damage
+- Include battle-themed feedback ("Critical hit!", "The monster staggers!")
+- Victory when enemy health reaches 0
+- Player can take damage on wrong answers (optional lives system)
+""",
+    "adventure": """
+For ADVENTURE games:
+- Create a story context and narrative
+- Include character dialogue and story progression
+- Questions unlock story chapters or progress the plot
+- Include branching choices where possible
+- Create memorable NPCs related to the subject matter
+- Victory is completing the story journey
+""",
+    "platformer": """
+For PLATFORMER games:
+- Questions act as "gates" or checkpoints
+- Correct answers let the player advance
+- Wrong answers might cost a life or restart section
+- Include collectibles tied to bonus questions
+- Level progression from easy to hard
+""",
+    "puzzle": """
+For PUZZLE games:
+- Include matching, sorting, or categorization challenges
+- Questions can be "arrange these in order" or "match pairs"
+- Support drag-and-drop style interactions
+- Include visual/spatial reasoning elements
+""",
+    "simulation": """
+For SIMULATION games:
+- Create a management or building scenario (e.g., run a restaurant, build a city)
+- Questions influence success/resources
+- Correct answers earn resources or unlock features
+- Include progression and achievement system
+"""
+}
+
 # System prompt for game generation
-GAME_COMPILER_SYSTEM_PROMPT = """You are an expert educational game designer AI. Your role is to transform teacher descriptions into complete, playable game specifications.
+GAME_COMPILER_SYSTEM_PROMPT = """You are an expert educational game designer. Transform teacher descriptions into complete, playable game specifications.
 
-When given a game description, you MUST output a valid JSON GameSpec following this exact structure:
+Your games must be ENGAGING, AGE-APPROPRIATE, and EDUCATIONALLY EFFECTIVE.
 
+OUTPUT FORMAT: Valid JSON GameSpec only. No markdown, no explanations.
+
+BASE GAMESPEC STRUCTURE:
 {
   "version": "2.0",
   "meta": {
-    "title": "Game Title",
-    "description": "Brief description",
-    "game_type": "quiz|battle|platformer|puzzle|simulation|adventure",
+    "title": "Engaging Title Here",
+    "description": "Brief, exciting description",
+    "game_type": "quiz|battle|adventure|platformer|puzzle|simulation",
     "educational": {
-      "grade_levels": [3, 4, 5],
-      "subjects": ["math", "science", "english", "history"],
-      "standards": [{"id": "CCSS.MATH.3.OA.A.1", "description": "Description"}],
+      "grade_levels": [4, 5],
+      "subjects": ["math"],
       "learning_objectives": ["Objective 1", "Objective 2"]
     },
     "gameplay": {
       "estimated_duration_minutes": 15,
-      "player_mode": "single",
       "difficulty": 2
     }
-  },
-  "state": {
-    "variables": [
-      {"id": "score", "name": "Score", "type": "number", "initial_value": 0},
-      {"id": "combo", "name": "Combo", "type": "number", "initial_value": 0},
-      {"id": "lives", "name": "Lives", "type": "number", "initial_value": 3}
-    ]
-  },
-  "entities": {
-    "player": {
-      "id": "hero",
-      "name": "Player Character",
-      "components": {
-        "sprite": {"asset": "hero_sprite", "width": 64, "height": 64, "color": "0x7c3aed"},
-        "health": {"max": 100, "current": 100},
-        "combat": {"base_damage": 10}
-      }
-    },
-    "enemies": [
-      {
-        "id": "enemy_1",
-        "name": "Enemy Name",
-        "components": {
-          "sprite": {"asset": "enemy_sprite", "width": 80, "height": 80, "color": "0xef4444"},
-          "health": {"max": 100, "current": 100},
-          "ai": {"behavior": "patrol"}
-        }
-      }
-    ]
   },
   "content": {
     "questions": [
       {
         "id": "q1",
         "type": "multiple_choice",
-        "stem": "Question text here?",
+        "stem": "Clear question text?",
         "options": [
-          {"id": "a", "text": "Answer A", "is_correct": false},
-          {"id": "b", "text": "Answer B", "is_correct": true},
-          {"id": "c", "text": "Answer C", "is_correct": false},
-          {"id": "d", "text": "Answer D", "is_correct": false}
+          {"id": "a", "text": "Wrong answer", "is_correct": false},
+          {"id": "b", "text": "Correct answer", "is_correct": true},
+          {"id": "c", "text": "Wrong answer", "is_correct": false},
+          {"id": "d", "text": "Wrong answer", "is_correct": false}
         ],
-        "explanation": "Explanation of the correct answer",
+        "explanation": "Clear explanation of why the answer is correct",
         "difficulty": 1,
-        "hints": ["Hint 1", "Hint 2"]
+        "hints": ["Helpful hint"]
       }
     ]
   },
-  "scenes": [
-    {
-      "id": "title",
-      "type": "title",
-      "title": "Game Title",
-      "components": [
-        {"id": "title_text", "type": "text", "content": "Game Title", "style": {"size": "h1"}},
-        {"id": "start_btn", "type": "button", "label": "Start Game", "action": {"type": "navigate", "target": "gameplay"}}
-      ]
-    },
-    {
-      "id": "gameplay",
-      "type": "battle|question|platformer",
-      "title": "Main Gameplay",
-      "components": []
-    },
-    {
-      "id": "victory",
-      "type": "result",
-      "title": "Victory!",
-      "components": []
-    }
-  ],
-  "rules": [
-    {
-      "id": "correct_answer",
-      "trigger": {"type": "answer_correct"},
-      "conditions": [],
-      "actions": [
-        {"type": "increment", "variable": "score", "amount": 10},
-        {"type": "increment", "variable": "combo", "amount": 1},
-        {"type": "play_sound", "sound": "correct"}
-      ]
-    },
-    {
-      "id": "wrong_answer",
-      "trigger": {"type": "answer_incorrect"},
-      "conditions": [],
-      "actions": [
-        {"type": "set", "variable": "combo", "value": 0},
-        {"type": "play_sound", "sound": "incorrect"}
-      ]
-    }
-  ],
   "settings": {
     "allow_hints": true,
     "shuffle_questions": true,
     "show_explanation": true,
-    "leaderboard": {
-      "enabled": true,
-      "type": "score"
-    }
+    "leaderboard": {"enabled": true, "type": "score"}
   }
 }
 
-IMPORTANT GUIDELINES:
-1. Generate 10-15 age-appropriate questions based on the topic and grade level
-2. Include helpful explanations for each question
-3. For battle/action games, create engaging enemy names related to the topic
-4. Make the game theme match the educational content
-5. Include appropriate difficulty progression
-6. Add hints for struggling students
-7. For speed-based games, add combo and time bonus rules
-8. ALWAYS output valid JSON only - no markdown, no explanations, just the JSON
+FOR BATTLE GAMES - ADD THIS STRUCTURE:
+{
+  "entities": {
+    "player": {
+      "id": "hero",
+      "name": "Knowledge Knight",
+      "health": {"max": 100, "current": 100},
+      "attack": {"base_damage": 10}
+    },
+    "enemy": {
+      "id": "boss",
+      "name": "The Fraction Fiend",
+      "description": "A fearsome monster who despises math knowledge!",
+      "health": {"max": 100, "current": 100},
+      "weakness": "Correct answers",
+      "taunt_messages": [
+        "You'll never defeat me!",
+        "Math is too hard for you!",
+        "Give up now!"
+      ],
+      "defeat_message": "Nooo! Your knowledge is too powerful!"
+    }
+  },
+  "battle_config": {
+    "damage_per_correct": 10,
+    "bonus_damage_per_combo": 5,
+    "speed_bonus_threshold_seconds": 5,
+    "speed_bonus_damage": 5,
+    "player_damage_on_wrong": 10
+  }
+}
 
-GAME TYPE SPECIFICS:
-- quiz: Traditional question-answer format
-- battle: Monster battles where correct answers deal damage
-- platformer: Side-scrolling with question triggers
-- puzzle: Matching, sorting, or logic puzzles
-- simulation: Cooking, building, or management games
-- adventure: Story-driven with branching paths"""
+QUALITY GUIDELINES:
+1. Questions must be grade-appropriate and clearly worded
+2. All 4 answer options should be plausible (no obvious jokes)
+3. Explanations should teach, not just say "that's correct"
+4. Difficulty should progress gradually
+5. Hints should guide without giving away the answer
+6. For battle games, make the enemy character FUN and THEMATIC
+7. Generate the exact number of questions requested
+
+OUTPUT ONLY VALID JSON. NO OTHER TEXT."""
 
 
 class AICompiler:
-    """AI-powered game specification generator."""
+    """AI-powered game specification generator using OpenAI GPT-5.1."""
     
     def __init__(self):
-        self.api_key = os.environ.get("EMERGENT_LLM_KEY")
+        # Try OpenAI key first, fall back to Emergent key
+        self.api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY")
+        self.use_openai = bool(os.environ.get("OPENAI_API_KEY"))
+        
         if not self.api_key:
-            raise ValueError("EMERGENT_LLM_KEY not found in environment")
+            raise ValueError("No API key found. Set OPENAI_API_KEY or EMERGENT_LLM_KEY")
+        
+        logger.info(f"AI Compiler initialized with {'OpenAI' if self.use_openai else 'Emergent'} key")
+    
+    def _get_chat(self, session_suffix: str = "") -> LlmChat:
+        """Create a configured LlmChat instance."""
+        chat = LlmChat(
+            api_key=self.api_key,
+            session_id=f"game_compile_{session_suffix}_{id(self)}",
+            system_message=GAME_COMPILER_SYSTEM_PROMPT
+        )
+        
+        # Use OpenAI GPT-5.1 for better JSON generation
+        if self.use_openai:
+            chat.with_model("openai", "gpt-5.1")
+        else:
+            chat.with_model("anthropic", "claude-sonnet-4-5-20250929")
+        
+        return chat
     
     async def compile_game(
         self,
@@ -176,44 +202,22 @@ class AICompiler:
     ) -> dict:
         """
         Generate a complete GameSpec from a natural language prompt.
-        
-        Args:
-            prompt: Teacher's description of the desired game
-            grade_levels: Target grade levels (e.g., [3, 4, 5])
-            subjects: Subject areas (e.g., ["math"])
-            game_type: Specific game type if requested
-            question_count: Number of questions to generate
-            duration_minutes: Target game duration
-            
-        Returns:
-            Complete GameSpec dictionary
         """
-        # Build enhanced prompt with context
         enhanced_prompt = self._build_prompt(
             prompt, grade_levels, subjects, game_type, question_count, duration_minutes
         )
         
-        # Initialize chat
-        chat = LlmChat(
-            api_key=self.api_key,
-            session_id=f"game_compile_{id(self)}",
-            system_message=GAME_COMPILER_SYSTEM_PROMPT
-        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
-        
-        # Send message
+        chat = self._get_chat("main")
         user_message = UserMessage(text=enhanced_prompt)
         
         try:
+            logger.info(f"Compiling game: type={game_type}, questions={question_count}")
             response = await chat.send_message(user_message)
             
-            # Parse JSON response
             spec = self._parse_response(response)
+            spec = self._validate_and_enhance(spec, game_type)
             
-            # Validate and enhance spec
-            spec = self._validate_and_enhance(spec)
-            
-            logger.info(f"Successfully compiled game: {spec.get('meta', {}).get('title', 'Unknown')}")
-            
+            logger.info(f"Successfully compiled: {spec.get('meta', {}).get('title', 'Unknown')}")
             return spec
             
         except Exception as e:
@@ -229,24 +233,14 @@ class AICompiler:
         question_count: int = 10,
         duration_minutes: int = 15
     ) -> AsyncGenerator[str, None]:
-        """
-        Generate GameSpec with streaming response for real-time UI updates.
-        Yields chunks of the JSON as it's generated.
-        """
+        """Generate GameSpec with streaming response."""
         enhanced_prompt = self._build_prompt(
             prompt, grade_levels, subjects, game_type, question_count, duration_minutes
         )
         
-        chat = LlmChat(
-            api_key=self.api_key,
-            session_id=f"game_compile_stream_{id(self)}",
-            system_message=GAME_COMPILER_SYSTEM_PROMPT
-        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
-        
+        chat = self._get_chat("stream")
         user_message = UserMessage(text=enhanced_prompt)
         
-        # For now, get full response and yield it
-        # In future, implement true streaming
         try:
             response = await chat.send_message(user_message)
             yield response
@@ -264,72 +258,25 @@ class AICompiler:
     ) -> list[dict]:
         """Generate additional questions for an existing game."""
         
-        prompt = f"""Generate {count} {question_type} questions about "{topic}" for grade {grade_level} students.
-        
-Difficulty level: {difficulty}/5
+        prompt = f"""Generate {count} {question_type} questions about "{topic}" for grade {grade_level}.
+Difficulty: {difficulty}/5
 
-Output as a JSON array of question objects with this structure:
-[
-  {{
-    "id": "q1",
-    "type": "{question_type}",
-    "stem": "Question text?",
-    "options": [
-      {{"id": "a", "text": "Option A", "is_correct": false}},
-      {{"id": "b", "text": "Option B", "is_correct": true}},
-      {{"id": "c", "text": "Option C", "is_correct": false}},
-      {{"id": "d", "text": "Option D", "is_correct": false}}
-    ],
-    "explanation": "Why the answer is correct",
-    "difficulty": {difficulty},
-    "hints": ["Hint 1"]
-  }}
-]
+Output as JSON array:
+[{{"id": "q1", "type": "{question_type}", "stem": "Question?", "options": [{{"id": "a", "text": "Option", "is_correct": false}}, ...], "explanation": "Why correct", "difficulty": {difficulty}, "hints": ["Hint"]}}]
 
-Output ONLY the JSON array, no other text."""
+JSON ONLY."""
 
-        chat = LlmChat(
-            api_key=self.api_key,
-            session_id=f"question_gen_{id(self)}",
-            system_message="You are an expert educational content creator. Generate high-quality, age-appropriate questions."
-        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
-        
+        chat = self._get_chat("questions")
         response = await chat.send_message(UserMessage(text=prompt))
         
         try:
-            questions = json.loads(response)
-            return questions
+            return json.loads(response)
         except json.JSONDecodeError:
-            # Try to extract JSON from response
             import re
             match = re.search(r'\[[\s\S]*\]', response)
             if match:
                 return json.loads(match.group())
-            raise ValueError("Failed to parse questions from AI response")
-    
-    async def generate_feedback(
-        self,
-        question: dict,
-        wrong_answer_id: str
-    ) -> str:
-        """Generate personalized feedback for a wrong answer."""
-        
-        prompt = f"""A student answered a question incorrectly. Generate helpful, encouraging feedback.
-
-Question: {question.get('stem')}
-Correct Answer: {next((o['text'] for o in question.get('options', []) if o.get('is_correct')), 'Unknown')}
-Student's Answer: {next((o['text'] for o in question.get('options', []) if o.get('id') == wrong_answer_id), 'Unknown')}
-
-Provide a brief (1-2 sentences), encouraging explanation of why their answer was incorrect and guide them toward the right answer. Be supportive and educational."""
-
-        chat = LlmChat(
-            api_key=self.api_key,
-            session_id=f"feedback_{id(self)}",
-            system_message="You are a supportive teacher providing feedback to students."
-        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
-        
-        response = await chat.send_message(UserMessage(text=prompt))
-        return response.strip()
+            raise ValueError("Failed to parse questions")
     
     async def refine_spec(
         self,
@@ -338,23 +285,17 @@ Provide a brief (1-2 sentences), encouraging explanation of why their answer was
     ) -> dict:
         """Refine an existing GameSpec based on teacher feedback."""
         
-        prompt = f"""Here is the current game specification:
-
+        prompt = f"""Current game spec:
 ```json
 {json.dumps(current_spec, indent=2)}
 ```
 
-The teacher wants to make these changes:
+Teacher's requested changes:
 {refinement_prompt}
 
-Output the complete updated GameSpec as valid JSON only."""
+Output the COMPLETE updated GameSpec as valid JSON only."""
 
-        chat = LlmChat(
-            api_key=self.api_key,
-            session_id=f"refine_{id(self)}",
-            system_message=GAME_COMPILER_SYSTEM_PROMPT
-        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
-        
+        chat = self._get_chat("refine")
         response = await chat.send_message(UserMessage(text=prompt))
         return self._parse_response(response)
     
@@ -367,39 +308,41 @@ Output the complete updated GameSpec as valid JSON only."""
         question_count: int,
         duration_minutes: int
     ) -> str:
-        """Build an enhanced prompt with all context."""
+        """Build an enhanced prompt with game-type specific instructions."""
         
-        parts = [f"Create an educational game based on this description:\n\n{prompt}\n"]
+        parts = [f"Create an educational game:\n\n{prompt}\n"]
         
         if grade_levels:
-            parts.append(f"Target Grade Levels: {', '.join(map(str, grade_levels))}")
+            parts.append(f"Grade Levels: {', '.join(map(str, grade_levels))}")
         
         if subjects:
             parts.append(f"Subjects: {', '.join(subjects)}")
         
         if game_type:
-            parts.append(f"Game Type: {game_type}")
+            parts.append(f"Game Type: {game_type.upper()}")
+            # Add game-type specific instructions
+            type_instructions = GAME_TYPE_INSTRUCTIONS.get(game_type.lower(), "")
+            if type_instructions:
+                parts.append(f"\n{type_instructions}")
         
-        parts.append(f"Number of Questions: {question_count}")
-        parts.append(f"Target Duration: {duration_minutes} minutes")
-        
-        parts.append("\nGenerate a complete, valid JSON GameSpec. Output ONLY the JSON, no explanations or markdown.")
+        parts.append(f"\nGenerate EXACTLY {question_count} questions")
+        parts.append(f"Target duration: {duration_minutes} minutes")
+        parts.append("\nOutput ONLY valid JSON GameSpec. No markdown or explanations.")
         
         return "\n".join(parts)
     
     def _parse_response(self, response: str) -> dict:
-        """Parse JSON from AI response, handling potential formatting issues."""
+        """Parse JSON from AI response."""
         
-        # Try direct parse first
+        # Try direct parse
         try:
             return json.loads(response)
         except json.JSONDecodeError:
             pass
         
-        # Try to extract JSON from markdown code blocks
         import re
         
-        # Look for ```json ... ``` blocks
+        # Try markdown code blocks
         match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response)
         if match:
             try:
@@ -407,7 +350,7 @@ Output the complete updated GameSpec as valid JSON only."""
             except json.JSONDecodeError:
                 pass
         
-        # Look for raw JSON object
+        # Try raw JSON object
         match = re.search(r'\{[\s\S]*\}', response)
         if match:
             try:
@@ -415,47 +358,57 @@ Output the complete updated GameSpec as valid JSON only."""
             except json.JSONDecodeError:
                 pass
         
-        raise ValueError(f"Could not parse JSON from response: {response[:500]}...")
+        raise ValueError(f"Could not parse JSON: {response[:500]}...")
     
-    def _validate_and_enhance(self, spec: dict) -> dict:
-        """Validate spec and add any missing required fields."""
+    def _validate_and_enhance(self, spec: dict, game_type: str = None) -> dict:
+        """Validate spec and add missing required fields."""
         
         # Ensure version
-        if "version" not in spec:
-            spec["version"] = "2.0"
+        spec.setdefault("version", "2.0")
         
         # Ensure meta
-        if "meta" not in spec:
-            spec["meta"] = {}
+        spec.setdefault("meta", {})
+        spec["meta"].setdefault("title", "Educational Game")
+        spec["meta"].setdefault("game_type", game_type or "quiz")
         
-        if "title" not in spec["meta"]:
-            spec["meta"]["title"] = "Educational Game"
+        # Ensure content
+        spec.setdefault("content", {"questions": []})
         
         # Ensure state variables
-        if "state" not in spec:
-            spec["state"] = {"variables": []}
+        spec.setdefault("state", {"variables": []})
+        required_vars = {"score": 0, "combo": 0}
+        existing_ids = {v.get("id") for v in spec["state"].get("variables", [])}
         
-        required_vars = ["score", "combo"]
-        existing_var_ids = {v.get("id") for v in spec["state"].get("variables", [])}
-        
-        for var_id in required_vars:
-            if var_id not in existing_var_ids:
+        for var_id, initial in required_vars.items():
+            if var_id not in existing_ids:
                 spec["state"]["variables"].append({
                     "id": var_id,
                     "name": var_id.capitalize(),
                     "type": "number",
-                    "initial_value": 0
+                    "initial_value": initial
                 })
         
-        # Ensure settings with leaderboard
-        if "settings" not in spec:
-            spec["settings"] = {}
+        # Ensure settings
+        spec.setdefault("settings", {})
+        spec["settings"].setdefault("allow_hints", True)
+        spec["settings"].setdefault("shuffle_questions", True)
+        spec["settings"].setdefault("show_explanation", True)
+        spec["settings"].setdefault("leaderboard", {"enabled": True, "type": "score"})
         
-        if "leaderboard" not in spec["settings"]:
-            spec["settings"]["leaderboard"] = {
-                "enabled": True,
-                "type": "score"
-            }
+        # For battle games, ensure entities exist
+        if spec["meta"].get("game_type") == "battle":
+            spec.setdefault("entities", {})
+            spec["entities"].setdefault("enemy", {
+                "id": "boss",
+                "name": "Knowledge Monster",
+                "health": {"max": 100, "current": 100}
+            })
+            spec.setdefault("battle_config", {
+                "damage_per_correct": 10,
+                "bonus_damage_per_combo": 5,
+                "speed_bonus_threshold_seconds": 5,
+                "speed_bonus_damage": 5
+            })
         
         return spec
 

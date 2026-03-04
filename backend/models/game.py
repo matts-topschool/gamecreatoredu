@@ -69,6 +69,7 @@ class GameMeta(BaseModel):
     title: str
     description: str = ""
     thumbnail_url: Optional[str] = None
+    game_type: str = "quiz"  # quiz, battle, adventure, platformer, puzzle, simulation
     educational: EducationalMeta = Field(default_factory=EducationalMeta)
     gameplay: GameplaySettings = Field(default_factory=GameplaySettings)
     accessibility: AccessibilitySettings = Field(default_factory=AccessibilitySettings)
@@ -277,11 +278,45 @@ class GameSettings(BaseModel):
     sound_effects: bool = True
 
 
+class BattleEntity(BaseModel):
+    """Battle game entity (player or enemy)."""
+    model_config = ConfigDict(extra="allow")  # Allow extra fields
+    
+    id: str
+    name: str
+    description: Optional[str] = None
+    health: Dict[str, Any] = Field(default_factory=lambda: {"max": 100, "current": 100})
+    weakness: Optional[str] = None
+    taunt_messages: List[str] = Field(default_factory=list)
+    defeat_message: Optional[str] = None
+
+
+class BattleEntities(BaseModel):
+    """Battle game entities container."""
+    model_config = ConfigDict(extra="allow")  # Allow extra fields
+    
+    player: Optional[Dict[str, Any]] = None
+    enemy: Optional[BattleEntity] = None
+
+
+class BattleConfig(BaseModel):
+    """Battle game configuration."""
+    model_config = ConfigDict(extra="allow")  # Allow extra fields
+    
+    damage_per_correct: int = 10
+    bonus_damage_per_combo: int = 5
+    speed_bonus_threshold_seconds: int = 5
+    speed_bonus_damage: int = 5
+    player_damage_on_wrong: int = 10
+
+
 class GameSpec(BaseModel):
     """
     Complete Game Specification - The heart of the Game OS.
     This JSON document fully describes an educational game.
     """
+    model_config = ConfigDict(extra="allow")  # Allow extra fields for flexibility
+    
     version: str = "1.0"
     meta: GameMeta
     assets: GameAssets = Field(default_factory=GameAssets)
@@ -290,6 +325,9 @@ class GameSpec(BaseModel):
     content: GameContent = Field(default_factory=GameContent)
     grading: GradingConfig = Field(default_factory=GradingConfig)
     settings: GameSettings = Field(default_factory=GameSettings)
+    # Battle game specific fields
+    entities: Optional[Dict[str, Any]] = None
+    battle_config: Optional[Dict[str, Any]] = None
 
 
 # ============== Game Model ==============
