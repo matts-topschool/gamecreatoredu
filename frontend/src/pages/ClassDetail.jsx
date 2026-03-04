@@ -54,7 +54,12 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import {
+  Alert,
+  AlertDescription,
+} from '@/components/ui/alert';
 import classroomService from '@/services/classroomService';
+import api from '@/services/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -241,6 +246,7 @@ const ClassDetail = () => {
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     loadClass();
@@ -287,6 +293,22 @@ const ClassDetail = () => {
       toast.error('Failed to remove student');
     }
   };
+
+  const handleSyncRoster = async () => {
+    setSyncing(true);
+    try {
+      const response = await api.post(`/integrations/google/sync-roster/${classId}`);
+      toast.success(`Roster synced! Added: ${response.data.added}, Removed: ${response.data.removed}`);
+      loadClass(); // Refresh class data
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to sync roster');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Check if class has Google Classroom integration
+  const hasGoogleIntegration = classData?.integration?.provider === 'google_classroom';
 
   if (loading) {
     return (
@@ -337,6 +359,38 @@ const ClassDetail = () => {
           Join Code: {classData.join_code}
         </Button>
       </div>
+
+      {/* Google Classroom Integration Alert */}
+      {hasGoogleIntegration && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <Link2 className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="flex items-center justify-between">
+            <span className="text-blue-800">
+              Connected to Google Classroom
+              {classData.integration?.last_sync_at && (
+                <span className="text-blue-600 ml-2">
+                  • Last synced: {new Date(classData.integration.last_sync_at).toLocaleDateString()}
+                </span>
+              )}
+            </span>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={handleSyncRoster}
+              disabled={syncing}
+              className="ml-4"
+              data-testid="sync-roster-btn"
+            >
+              {syncing ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Users className="w-4 h-4 mr-2" />
+              )}
+              Sync Roster
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4">

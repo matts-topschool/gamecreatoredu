@@ -12,7 +12,8 @@ import {
   ArrowRight,
   Clock,
   Star,
-  Sparkles
+  Sparkles,
+  Link2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -230,6 +231,14 @@ const Dashboard = () => {
                     <TrendingUp className="w-4 h-4 text-teal-600" />
                   </div>
                   Browse Marketplace
+                </Button>
+              </Link>
+              <Link to="/integrations" className="block">
+                <Button variant="outline" className="w-full justify-start gap-3 h-12">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <Link2 className="w-4 h-4 text-blue-600" />
+                  </div>
+                  Connect LMS/SIS
                 </Button>
               </Link>
             </CardContent>
