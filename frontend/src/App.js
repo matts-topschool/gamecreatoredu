@@ -19,6 +19,8 @@ import Studio from "@/pages/Studio";
 import StudioNew from "@/pages/StudioNew";
 import StudioEditor from "@/pages/StudioEditor";
 import Play from "@/pages/Play";
+import Classes from "@/pages/Classes";
+import ClassDetail from "@/pages/ClassDetail";
 
 // Placeholder pages for Phase 1
 const Placeholder = ({ title }) => (
@@ -31,7 +33,6 @@ const Placeholder = ({ title }) => (
 );
 const DashboardGames = () => <Placeholder title="My Games" />;
 const DashboardSessions = () => <Placeholder title="Sessions" />;
-const DashboardClasses = () => <Placeholder title="Classes" />;
 const DashboardAnalytics = () => <Placeholder title="Analytics" />;
 const Marketplace = () => <Placeholder title="Marketplace" />;
 const MarketplaceListing = () => <Placeholder title="Game Listing" />;
@@ -71,8 +72,8 @@ function App() {
             <Route path="/dashboard/games" element={<DashboardGames />} />
             <Route path="/dashboard/sessions" element={<DashboardSessions />} />
             <Route path="/dashboard/sessions/:id" element={<Placeholder title="Session Detail" />} />
-            <Route path="/dashboard/classes" element={<DashboardClasses />} />
-            <Route path="/dashboard/classes/:id" element={<Placeholder title="Class Detail" />} />
+            <Route path="/dashboard/classes" element={<Classes />} />
+            <Route path="/dashboard/classes/:classId" element={<ClassDetail />} />
             <Route path="/dashboard/analytics" element={<DashboardAnalytics />} />
 
             {/* Studio */}
