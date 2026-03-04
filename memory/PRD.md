@@ -237,13 +237,13 @@ The platform aims to:
 - [x] Battle game spec with entities.enemy and battle_config
 - [x] Proper game_type preservation in backend models
 
-### Phase 3: Dashboard & Analytics (COMPLETED)
-- [x] Game Results recording (submit scores to backend)
-- [x] Per-game leaderboards (top 10 scores, sortable by score/time/accuracy)
-- [x] Player stats aggregation (total games, avg score, best achievements)
-- [x] Classroom management (create classes, join codes)
-- [x] Student enrollment (add students, join via code)
-- [x] LMS/SIS integration framework (Google Classroom, Canvas, Clever, etc.)
+### Phase 3A: Frontend - Leaderboards & Classroom UI (COMPLETED)
+- [x] Leaderboard component with rank badges, medals for top 3
+- [x] PlayerStats component with achievements
+- [x] Classes page for teachers (list, create, delete)
+- [x] ClassDetail page (students table, add students, join code)
+- [x] Classroom service API wrapper
+- [x] Leaderboard integrated into Play page sidebar
 
 ### Phase 4: Marketplace (NEXT)
 - [ ] Marketplace listings model

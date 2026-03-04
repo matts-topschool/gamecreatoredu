@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import GameRuntimeSelector from '@/components/game/GameRuntimeSelector';
+import Leaderboard from '@/components/game/Leaderboard';
 import useGameStore from '@/stores/gameStore';
 import useAuthStore from '@/stores/authStore';
 import leaderboardService from '@/services/leaderboardService';
@@ -198,15 +199,44 @@ const Play = () => {
       </div>
 
       {/* Game Container */}
-      <div className="max-w-4xl mx-auto p-4">
-        <GameRuntimeSelector
-          spec={currentGame?.spec}
-          onComplete={handleGameComplete}
-          onExit={handleExit}
-          playerId={user?.id}
-          playerName={user?.display_name || 'Player'}
-          fallbackToQuiz={true}
-        />
+      <div className="max-w-6xl mx-auto p-4">
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Game Area */}
+          <div className="lg:col-span-2">
+            <GameRuntimeSelector
+              spec={currentGame?.spec}
+              onComplete={handleGameComplete}
+              onExit={handleExit}
+              playerId={user?.id}
+              playerName={user?.display_name || 'Player'}
+              fallbackToQuiz={true}
+            />
+          </div>
+          
+          {/* Sidebar - Leaderboard */}
+          <div className="space-y-4">
+            <Leaderboard gameId={gameId} limit={10} />
+            
+            {/* My Rank */}
+            {myRank?.has_played && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+                      <Trophy className="w-5 h-5 text-violet-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Your Rank</p>
+                      <p className="font-bold text-lg">
+                        #{myRank.rank} of {myRank.total_players}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
