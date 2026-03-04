@@ -4,12 +4,14 @@
  */
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Loader2, AlertCircle, Share2 } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, Share2, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import GameRuntimeSelector from '@/components/game/GameRuntimeSelector';
 import useGameStore from '@/stores/gameStore';
 import useAuthStore from '@/stores/authStore';
+import leaderboardService from '@/services/leaderboardService';
 import { toast } from 'sonner';
 
 const Play = () => {
@@ -21,26 +23,68 @@ const Play = () => {
   
   const [gameComplete, setGameComplete] = useState(false);
   const [finalStats, setFinalStats] = useState(null);
+  const [leaderboard, setLeaderboard] = useState(null);
+  const [myRank, setMyRank] = useState(null);
 
   // Load game on mount
   useEffect(() => {
     if (gameId) {
       fetchGame(gameId);
+      loadLeaderboard();
     }
   }, [gameId, fetchGame]);
 
+  // Load leaderboard
+  const loadLeaderboard = async () => {
+    try {
+      const data = await leaderboardService.getGameLeaderboard(gameId, { limit: 5 });
+      setLeaderboard(data);
+    } catch (err) {
+      // Leaderboard not critical
+    }
+  };
+
   // Handle game completion
-  const handleGameComplete = (stats) => {
+  const handleGameComplete = async (stats) => {
     setGameComplete(true);
     setFinalStats(stats);
     
-    // TODO: Send stats to backend for analytics
-    console.log('Game completed with stats:', stats);
+    // Submit result to backend
+    try {
+      const result = {
+        game_id: gameId,
+        player_name: user?.display_name || 'Guest Player',
+        score: stats.score || 0,
+        accuracy: stats.correctAnswers / Math.max(stats.questionsAnswered || 1, 1),
+        questions_total: stats.questionsAnswered || 0,
+        questions_correct: stats.correctAnswers || 0,
+        time_taken_seconds: Math.floor((stats.totalTime || 0) / 1000),
+        max_combo: stats.maxCombo || 0,
+        hints_used: stats.hintsUsed || 0,
+        damage_dealt: stats.score || 0,  // For battle games
+        enemy_defeated: stats.enemyDefeated || false
+      };
+      
+      await leaderboardService.submitResult(result);
+      
+      // Reload leaderboard to show new entry
+      await loadLeaderboard();
+      
+      // Get user's rank
+      if (isAuthenticated) {
+        const rankData = await leaderboardService.getMyRank(gameId);
+        setMyRank(rankData);
+      }
+      
+      toast.success('Score submitted to leaderboard!');
+    } catch (err) {
+      console.error('Failed to submit result:', err);
+      // Don't show error to user - game experience shouldn't be affected
+    }
   };
 
   // Handle exit
   const handleExit = () => {
-    // Go back to where they came from or dashboard
     const from = location.state?.from || '/dashboard';
     navigate(from);
   };
@@ -60,7 +104,6 @@ const Play = () => {
         // User cancelled or error
       }
     } else {
-      // Fallback to clipboard
       await navigator.clipboard.writeText(url);
       toast.success('Link copied to clipboard!');
     }
