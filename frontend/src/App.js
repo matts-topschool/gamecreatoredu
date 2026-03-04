@@ -21,6 +21,8 @@ import StudioEditor from "@/pages/StudioEditor";
 import Play from "@/pages/Play";
 import Classes from "@/pages/Classes";
 import ClassDetail from "@/pages/ClassDetail";
+import Marketplace from "@/pages/Marketplace";
+import MarketplaceListing from "@/pages/MarketplaceListing";
 
 // Placeholder pages for Phase 1
 const Placeholder = ({ title }) => (
@@ -34,8 +36,6 @@ const Placeholder = ({ title }) => (
 const DashboardGames = () => <Placeholder title="My Games" />;
 const DashboardSessions = () => <Placeholder title="Sessions" />;
 const DashboardAnalytics = () => <Placeholder title="Analytics" />;
-const Marketplace = () => <Placeholder title="Marketplace" />;
-const MarketplaceListing = () => <Placeholder title="Game Listing" />;
 const MarketplacePurchases = () => <Placeholder title="My Purchases" />;
 const Settings = () => <Placeholder title="Settings" />;
 const PlaySession = () => <Placeholder title="Live Session" />;
@@ -86,7 +86,8 @@ function App() {
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/marketplace/purchases" element={<MarketplacePurchases />} />
             <Route path="/marketplace/sell" element={<Placeholder title="Seller Dashboard" />} />
-            <Route path="/marketplace/:slug" element={<MarketplaceListing />} />
+            <Route path="/marketplace/publisher/:userId" element={<Placeholder title="Publisher Profile" />} />
+            <Route path="/marketplace/:gameId" element={<MarketplaceListing />} />
 
             {/* Settings */}
             <Route path="/settings" element={<Settings />} />
