@@ -99,6 +99,15 @@ const marketplaceService = {
   },
 
   /**
+   * Fork/duplicate a game to user's library for editing.
+   * Creates an editable copy that the user owns.
+   */
+  forkGame: async (gameId) => {
+    const response = await api.post(`/marketplace/game/${gameId}/fork`);
+    return response.data;
+  },
+
+  /**
    * Get user's game library.
    */
   getMyLibrary: async () => {

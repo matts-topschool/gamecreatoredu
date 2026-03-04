@@ -8,7 +8,9 @@ import {
   Tag,
   DollarSign,
   Search as SearchIcon,
-  CheckCircle
+  CheckCircle,
+  GitFork,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +33,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Alert,
+  AlertDescription,
+} from '@/components/ui/alert';
 import marketplaceService from '@/services/marketplaceService';
 import { toast } from 'sonner';
 
@@ -46,10 +52,14 @@ const PublishDialog = ({ open, onOpenChange, game, onPublished }) => {
     is_free: true,
     price_cents: 0,
     license_type: 'single',
+    allow_derivative_sales: false,
     seo_title: '',
     seo_description: '',
     seo_keywords: []
   });
+
+  // Check if this is a forked game
+  const isForked = game?.is_forked || game?.forked_from_id;
 
   useEffect(() => {
     if (open) {
@@ -107,6 +117,7 @@ const PublishDialog = ({ open, onOpenChange, game, onPublished }) => {
         is_free: form.is_free,
         price_cents: form.is_free ? 0 : form.price_cents,
         license_type: form.license_type,
+        allow_derivative_sales: form.allow_derivative_sales,
         seo_title: form.seo_title || null,
         seo_description: form.seo_description || null,
         seo_keywords: form.seo_keywords
@@ -137,6 +148,16 @@ const PublishDialog = ({ open, onOpenChange, game, onPublished }) => {
             Make your game discoverable by other educators.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Forked game warning */}
+        {isForked && (
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              This is a forked game. Publishing will only work if the original creator allowed derivative sales.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Category */}
@@ -230,6 +251,7 @@ const PublishDialog = ({ open, onOpenChange, game, onPublished }) => {
               <Switch
                 checked={form.is_free}
                 onCheckedChange={(checked) => setForm(prev => ({ ...prev, is_free: checked }))}
+                data-testid="free-toggle"
               />
             </div>
 
@@ -247,6 +269,7 @@ const PublishDialog = ({ open, onOpenChange, game, onPublished }) => {
                       price_cents: Math.round(parseFloat(e.target.value) * 100) 
                     }))}
                     className="mt-1"
+                    data-testid="price-input"
                   />
                 </div>
                 <div>
@@ -267,6 +290,31 @@ const PublishDialog = ({ open, onOpenChange, game, onPublished }) => {
                   </Select>
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* Derivative Sales Permission */}
+          <div className="p-4 bg-violet-50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="flex items-center gap-2">
+                  <GitFork className="w-4 h-4 text-violet-600" />
+                  Allow Derivative Sales
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Let buyers modify and resell their versions of your game
+                </p>
+              </div>
+              <Switch
+                checked={form.allow_derivative_sales}
+                onCheckedChange={(checked) => setForm(prev => ({ ...prev, allow_derivative_sales: checked }))}
+                data-testid="derivative-toggle"
+              />
+            </div>
+            {form.allow_derivative_sales && (
+              <p className="text-xs text-violet-600 mt-2">
+                Buyers will be able to fork, customize, and list their modified versions on the marketplace.
+              </p>
             )}
           </div>
 

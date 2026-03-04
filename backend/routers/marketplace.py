@@ -269,6 +269,7 @@ async def publish_to_marketplace(
     """
     Publish a game to the marketplace.
     Game must be owned by the current user.
+    Forked games cannot be published unless the original creator allowed derivative sales.
     """
     games = get_games_collection()
     users = get_users_collection()
@@ -281,6 +282,20 @@ async def publish_to_marketplace(
     
     if not game:
         raise HTTPException(status_code=404, detail="Game not found or not owned by you")
+    
+    # Check if this is a forked game - restrict publishing unless original allowed
+    if game.get("is_forked") and game.get("forked_from_id"):
+        # Fetch original game to check allow_derivative_sales
+        original = await games.find_one(
+            {"id": game["forked_from_id"]},
+            {"_id": 0, "allow_derivative_sales": 1, "title": 1}
+        )
+        
+        if original and not original.get("allow_derivative_sales", False):
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Cannot publish this game. The original creator of '{original.get('title', 'the source game')}' does not allow derivative works to be sold on the marketplace."
+            )
     
     # Validate game has content
     spec = game.get("spec", {})
@@ -301,6 +316,7 @@ async def publish_to_marketplace(
         "marketplace_tags": [t.lower() for t in request.tags],
         "price_cents": request.price_cents if not request.is_free else 0,
         "license_type": request.license_type,
+        "allow_derivative_sales": request.allow_derivative_sales,
         "seo_title": request.seo_title or game.get("title"),
         "seo_description": request.seo_description or game.get("description"),
         "seo_keywords": request.seo_keywords,
@@ -488,6 +504,97 @@ async def acquire_game(
     )
 
 
+@router.post("/game/{game_id}/fork")
+async def fork_game(
+    game_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Fork/duplicate a game to the user's library for editing.
+    User must have acquired the game first (or it must be free).
+    Creates an editable copy that the user owns.
+    """
+    games = get_games_collection()
+    purchases = get_purchases_collection()
+    
+    # Get original game
+    original_game = await games.find_one({"id": game_id, "is_marketplace_listed": True}, {"_id": 0})
+    if not original_game:
+        raise HTTPException(status_code=404, detail="Game not found in marketplace")
+    
+    # Check if it's the owner trying to fork their own game
+    if original_game["owner_id"] == current_user["id"]:
+        raise HTTPException(status_code=400, detail="You cannot fork your own game. Edit it directly instead.")
+    
+    # Check if user has acquired the game (or it's free)
+    is_free = original_game.get("price_cents", 0) == 0
+    
+    if not is_free:
+        purchase = await purchases.find_one({
+            "game_id": game_id,
+            "buyer_id": current_user["id"],
+            "status": "completed"
+        })
+        if not purchase:
+            raise HTTPException(
+                status_code=403, 
+                detail="You must acquire this game before you can fork it."
+            )
+    
+    # Create the forked game
+    import uuid
+    now = datetime.now(timezone.utc)
+    
+    forked_game = {
+        "id": str(uuid.uuid4()),
+        "owner_id": current_user["id"],
+        "title": f"{original_game['title']} (My Version)",
+        "description": original_game.get("description", ""),
+        "slug": f"{original_game.get('slug', 'game')[:30]}-fork-{str(uuid.uuid4())[:8]}",
+        "thumbnail_url": original_game.get("thumbnail_url"),
+        "spec": original_game.get("spec"),
+        "spec_version": original_game.get("spec_version", 1),
+        "status": "draft",  # Start as draft
+        "visibility": "private",  # Start as private
+        "is_marketplace_listed": False,  # Not listed
+        "price_cents": 0,
+        "license_type": "single",
+        # Fork tracking
+        "forked_from_id": game_id,
+        "is_forked": True,
+        "allow_derivative_sales": False,  # Forked games default to no resale
+        # Copy educational metadata
+        "grade_levels": original_game.get("grade_levels", []),
+        "subjects": original_game.get("subjects", []),
+        "standards_tags": original_game.get("standards_tags", []),
+        "language": original_game.get("language", "en-US"),
+        # Reset stats
+        "play_count": 0,
+        "avg_rating": 0.0,
+        "review_count": 0,
+        "purchase_count": 0,
+        # Timestamps
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+        "published_at": None
+    }
+    
+    await games.insert_one(forked_game)
+    
+    # Increment fork count on original (optional tracking)
+    await games.update_one({"id": game_id}, {"$inc": {"fork_count": 1}})
+    
+    logger.info(f"Game {game_id} forked by user {current_user['id']} -> new game {forked_game['id']}")
+    
+    return {
+        "success": True,
+        "message": "Game forked successfully! You can now edit it in your studio.",
+        "forked_game_id": forked_game["id"],
+        "original_game_id": game_id,
+        "can_resell": original_game.get("allow_derivative_sales", False)
+    }
+
+
 @router.get("/my-library")
 async def get_my_library(
     current_user: dict = Depends(get_current_user)
@@ -613,6 +720,9 @@ def build_listing_from_game(game: dict, creator: dict = None) -> MarketplaceList
         is_free=game.get("price_cents", 0) == 0,
         price_cents=game.get("price_cents", 0),
         license_type=game.get("license_type", "single"),
+        forked_from_id=game.get("forked_from_id"),
+        is_forked=game.get("is_forked", False),
+        allow_derivative_sales=game.get("allow_derivative_sales", False),
         play_count=game.get("play_count", 0),
         avg_rating=game.get("avg_rating", 0),
         review_count=game.get("review_count", 0),

@@ -382,6 +382,11 @@ class GameInDB(GameBase):
     price_cents: int = 0
     license_type: LicenseType = LicenseType.SINGLE
     
+    # Fork/derivative tracking
+    forked_from_id: Optional[str] = None  # Original game ID if this is a fork
+    is_forked: bool = False  # True if this game is a fork/derivative
+    allow_derivative_sales: bool = False  # Creator allows resale of forked games
+    
     grade_levels: List[int] = Field(default_factory=list)
     subjects: List[str] = Field(default_factory=list)
     standards_tags: List[str] = Field(default_factory=list)
@@ -421,6 +426,11 @@ class Game(GameBase):
     
     is_marketplace_listed: bool
     price_cents: int
+    
+    # Fork/derivative tracking
+    forked_from_id: Optional[str] = None
+    is_forked: bool = False
+    allow_derivative_sales: bool = False
     
     grade_levels: List[int]
     subjects: List[str]

@@ -176,6 +176,11 @@ class MarketplaceListing(BaseModel):
     price_cents: int = 0
     license_type: str = "single"
     
+    # Fork/derivative info
+    forked_from_id: Optional[str] = None
+    is_forked: bool = False
+    allow_derivative_sales: bool = False
+    
     # Stats
     play_count: int = 0
     avg_rating: float = 0.0
@@ -205,6 +210,9 @@ class MarketplaceListingCreate(BaseModel):
     is_free: bool = True
     price_cents: int = Field(default=0, ge=0)
     license_type: str = "single"
+    
+    # Derivative/Fork permissions
+    allow_derivative_sales: bool = False  # Allow buyers to resell modified versions
     
     # SEO
     seo_title: Optional[str] = Field(None, max_length=60)

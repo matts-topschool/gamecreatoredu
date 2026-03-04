@@ -19,7 +19,10 @@ import {
   CheckCircle,
   ShoppingCart,
   User,
-  MessageSquare
+  MessageSquare,
+  GitFork,
+  Edit,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +37,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Alert,
+  AlertDescription,
+} from '@/components/ui/alert';
 import Leaderboard from '@/components/game/Leaderboard';
 import marketplaceService from '@/services/marketplaceService';
 import useAuthStore from '@/stores/authStore';
@@ -126,6 +133,7 @@ const MarketplaceListing = () => {
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
   const [acquiring, setAcquiring] = useState(false);
+  const [forking, setForking] = useState(false);
   const [acquired, setAcquired] = useState(false);
   
   // Review form
@@ -180,6 +188,27 @@ const MarketplaceListing = () => {
       toast.error(err.response?.data?.detail || 'Failed to acquire game');
     } finally {
       setAcquiring(false);
+    }
+  };
+
+  const handleFork = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in to fork this game');
+      navigate('/login');
+      return;
+    }
+
+    setForking(true);
+    try {
+      const result = await marketplaceService.forkGame(gameId);
+      toast.success(result.message || 'Game forked successfully!');
+      
+      // Navigate to the forked game in studio
+      navigate(`/studio/${result.forked_game_id}`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to fork game');
+    } finally {
+      setForking(false);
     }
   };
 
@@ -452,38 +481,85 @@ const MarketplaceListing = () => {
                   </span>
                 </div>
 
+                {/* Forked indicator */}
+                {listing.is_forked && (
+                  <Alert className="mb-4 border-violet-200 bg-violet-50">
+                    <GitFork className="h-4 w-4 text-violet-600" />
+                    <AlertDescription className="text-violet-800 text-sm">
+                      This is a community adaptation
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 {/* Actions */}
                 <div className="space-y-3">
                   {isOwner ? (
                     <Button 
                       className="w-full" 
                       onClick={() => navigate(`/studio/${gameId}`)}
+                      data-testid="edit-game-btn"
                     >
+                      <Edit className="w-4 h-4 mr-2" />
                       Edit Game
                     </Button>
                   ) : acquired ? (
-                    <Button 
-                      className="w-full bg-emerald-600 hover:bg-emerald-700" 
-                      onClick={handlePlay}
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      Play Now
-                    </Button>
+                    <>
+                      <Button 
+                        className="w-full bg-emerald-600 hover:bg-emerald-700" 
+                        onClick={handlePlay}
+                        data-testid="play-now-btn"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        Play Now
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleFork}
+                        disabled={forking}
+                        data-testid="fork-game-btn"
+                      >
+                        {forking ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <GitFork className="w-4 h-4 mr-2" />
+                        )}
+                        Fork & Customize
+                      </Button>
+                    </>
                   ) : (
-                    <Button 
-                      className="w-full" 
-                      onClick={handleAcquire}
-                      disabled={acquiring}
-                    >
-                      {acquiring ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : listing.is_free ? (
-                        <ShoppingCart className="w-4 h-4 mr-2" />
-                      ) : (
-                        <ShoppingCart className="w-4 h-4 mr-2" />
+                    <>
+                      <Button 
+                        className="w-full" 
+                        onClick={handleAcquire}
+                        disabled={acquiring}
+                        data-testid="acquire-game-btn"
+                      >
+                        {acquiring ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                        )}
+                        {listing.is_free ? 'Get Free' : 'Purchase'}
+                      </Button>
+                      {/* Show fork option for free games even before acquiring */}
+                      {listing.is_free && (
+                        <Button 
+                          variant="outline"
+                          className="w-full"
+                          onClick={handleFork}
+                          disabled={forking}
+                          data-testid="fork-game-btn"
+                        >
+                          {forking ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <GitFork className="w-4 h-4 mr-2" />
+                          )}
+                          Fork & Customize
+                        </Button>
                       )}
-                      {listing.is_free ? 'Get Free' : 'Purchase'}
-                    </Button>
+                    </>
                   )}
                   
                   <div className="flex gap-2">
@@ -491,6 +567,7 @@ const MarketplaceListing = () => {
                       variant="outline" 
                       className="flex-1"
                       onClick={handlePlay}
+                      data-testid="preview-btn"
                     >
                       <Play className="w-4 h-4 mr-2" />
                       Preview
@@ -500,6 +577,24 @@ const MarketplaceListing = () => {
                     </Button>
                   </div>
                 </div>
+
+                {/* Derivative sales info */}
+                {listing.allow_derivative_sales && (
+                  <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                    <p className="text-xs text-green-700 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Derivative sales allowed - you can modify and resell
+                    </p>
+                  </div>
+                )}
+                {!listing.allow_derivative_sales && !isOwner && (
+                  <div className="mt-4 p-3 bg-amber-50 rounded-lg">
+                    <p className="text-xs text-amber-700 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      Personal use only - cannot resell modifications
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

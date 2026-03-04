@@ -200,14 +200,14 @@ const FilterSidebar = ({
       <div>
         <Label className="text-sm font-semibold mb-3 block">Grade Level</Label>
         <Select 
-          value={filters.gradeLevel?.toString() || ""} 
-          onValueChange={(v) => onFilterChange('gradeLevel', v ? parseInt(v) : null)}
+          value={filters.gradeLevel?.toString() || "all"} 
+          onValueChange={(v) => onFilterChange('gradeLevel', v === 'all' ? null : parseInt(v))}
         >
           <SelectTrigger>
             <SelectValue placeholder="All Grades" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Grades</SelectItem>
+            <SelectItem value="all">All Grades</SelectItem>
             {gradeOptions.map(g => (
               <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
             ))}

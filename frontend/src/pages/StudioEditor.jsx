@@ -25,7 +25,8 @@ import {
   Gamepad2,
   BookOpen,
   Zap,
-  Trophy
+  Trophy,
+  Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +62,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import useGameStore from '@/stores/gameStore';
 import LivePreview from '@/components/studio/LivePreview';
+import PublishDialog from '@/components/studio/PublishDialog';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -431,6 +433,7 @@ const StudioEditor = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [refinePrompt, setRefinePrompt] = useState('');
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
 
   // Load game on mount
   useEffect(() => {
@@ -598,6 +601,16 @@ const StudioEditor = () => {
           >
             <Play className="w-4 h-4 mr-2" />
             Preview
+          </Button>
+          
+          <Button 
+            variant="outline"
+            onClick={() => setShowPublishDialog(true)}
+            className="text-violet-600 border-violet-200 hover:bg-violet-50"
+            data-testid="publish-game-btn"
+          >
+            <Globe className="w-4 h-4 mr-2" />
+            Publish
           </Button>
           
           <AlertDialog>
@@ -791,6 +804,18 @@ const StudioEditor = () => {
           </Card>
         </div>
       </div>
+      
+      {/* Publish Dialog */}
+      <PublishDialog 
+        open={showPublishDialog}
+        onOpenChange={setShowPublishDialog}
+        game={currentGame}
+        onPublished={(result) => {
+          toast.success('Game published to marketplace!');
+          // Optionally refresh game data
+          fetchGame(gameId);
+        }}
+      />
     </div>
   );
 };
