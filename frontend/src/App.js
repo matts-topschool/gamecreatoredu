@@ -1,52 +1,121 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+// Stores
+import useAuthStore from "@/stores/authStore";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+// Layout
+import Layout from "@/components/common/Layout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+// Pages
+import Landing from "@/pages/Landing";
+import Login from "@/pages/Login";
+import Signup from "@/pages/Signup";
+import Dashboard from "@/pages/Dashboard";
+import Studio from "@/pages/Studio";
+import StudioNew from "@/pages/StudioNew";
 
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+// Placeholder pages for Phase 1
+const Placeholder = ({ title }) => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="text-center">
+      <h1 className="text-2xl font-bold text-foreground mb-2">{title}</h1>
+      <p className="text-muted-foreground">Coming soon in next phase</p>
     </div>
-  );
-};
+  </div>
+);
+
+const StudioEditor = () => <Placeholder title="Game Editor" />;
+const DashboardGames = () => <Placeholder title="My Games" />;
+const DashboardSessions = () => <Placeholder title="Sessions" />;
+const DashboardClasses = () => <Placeholder title="Classes" />;
+const DashboardAnalytics = () => <Placeholder title="Analytics" />;
+const Marketplace = () => <Placeholder title="Marketplace" />;
+const MarketplaceListing = () => <Placeholder title="Game Listing" />;
+const MarketplacePurchases = () => <Placeholder title="My Purchases" />;
+const Settings = () => <Placeholder title="Settings" />;
+const Play = () => <Placeholder title="Play Game" />;
+const PlaySession = () => <Placeholder title="Live Session" />;
 
 function App() {
+  const { checkAuth } = useAuthStore();
+
+  // Check authentication on app load
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
   return (
     <div className="App">
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
+          {/* Public Routes */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/auth/login" element={<Login />} />
+          <Route path="/auth/signup" element={<Signup />} />
+          <Route path="/pricing" element={<Placeholder title="Pricing" />} />
+          <Route path="/about" element={<Placeholder title="About" />} />
+
+          {/* Protected Routes with Layout */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            {/* Dashboard */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/games" element={<DashboardGames />} />
+            <Route path="/dashboard/sessions" element={<DashboardSessions />} />
+            <Route path="/dashboard/sessions/:id" element={<Placeholder title="Session Detail" />} />
+            <Route path="/dashboard/classes" element={<DashboardClasses />} />
+            <Route path="/dashboard/classes/:id" element={<Placeholder title="Class Detail" />} />
+            <Route path="/dashboard/analytics" element={<DashboardAnalytics />} />
+
+            {/* Studio */}
+            <Route path="/studio" element={<Studio />} />
+            <Route path="/studio/new" element={<StudioNew />} />
+            <Route path="/studio/:gameId" element={<StudioEditor />} />
+            <Route path="/studio/:gameId/preview" element={<Placeholder title="Game Preview" />} />
+
+            {/* Marketplace */}
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/marketplace/purchases" element={<MarketplacePurchases />} />
+            <Route path="/marketplace/sell" element={<Placeholder title="Seller Dashboard" />} />
+            <Route path="/marketplace/:slug" element={<MarketplaceListing />} />
+
+            {/* Settings */}
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/subscription" element={<Placeholder title="Subscription" />} />
+            <Route path="/settings/integrations" element={<Placeholder title="Integrations" />} />
           </Route>
+
+          {/* Play Routes (semi-public) */}
+          <Route path="/play/:gameId" element={<Play />} />
+          <Route path="/play/join" element={<Placeholder title="Join Game" />} />
+          <Route path="/play/session/:code" element={<PlaySession />} />
+          <Route path="/play/demo" element={<Placeholder title="Demo Game" />} />
+
+          {/* Catch all - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+
+      {/* Toast notifications */}
+      <Toaster 
+        position="top-right" 
+        richColors 
+        closeButton
+        toastOptions={{
+          style: {
+            fontFamily: 'Manrope, sans-serif'
+          }
+        }}
+      />
     </div>
   );
 }

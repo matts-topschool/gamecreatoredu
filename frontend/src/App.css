@@ -1,34 +1,130 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* App-specific styles */
+
+/* Remove default App centering */
+.App {
+  text-align: left;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
 }
 
-.App-link {
-    color: #61dafb;
+.page-exit {
+  opacity: 1;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.page-exit-active {
+  opacity: 0;
+  transition: opacity 150ms ease-in;
+}
+
+/* Custom scrollbar for main content */
+main {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+main::-webkit-scrollbar {
+  width: 8px;
+}
+
+main::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+main::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+main::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+/* Smooth link transitions */
+a {
+  transition: color 150ms ease;
+}
+
+/* Input autofill styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px hsl(var(--background)) inset;
+  -webkit-text-fill-color: hsl(var(--foreground));
+}
+
+/* Selection styling */
+::selection {
+  background: hsl(262 83% 58% / 0.2);
+  color: hsl(var(--foreground));
+}
+
+/* Placeholder styling */
+::placeholder {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.7;
+}
+
+/* Focus ring override for better accessibility */
+[data-focus-visible-added]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
+}
+
+/* Loading skeleton animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Tooltip arrow */
+[data-radix-popper-content-wrapper] {
+  z-index: 50 !important;
+}
+
+/* Dialog overlay */
+[data-radix-dialog-overlay] {
+  backdrop-filter: blur(4px);
+}
+
+/* Dropdown menu item hover */
+[role="menuitem"]:focus {
+  outline: none;
+}
+
+/* Toast styling overrides */
+[data-sonner-toast] {
+  font-family: 'Manrope', sans-serif !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: hsl(142 76% 36%);
+}
+
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: hsl(0 84% 60%);
 }
