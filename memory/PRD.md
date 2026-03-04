@@ -206,6 +206,21 @@ The platform aims to:
 | Mar 4, 2026 | Studio Publish Button | Integrated publish flow in StudioEditor header |
 | Mar 4, 2026 | Derivative Status UI | Shows resale permissions on listing pages |
 
+### March 2026 - Phase 5: LMS/SIS Integrations
+
+| Date | Item | Details |
+|------|------|---------|
+| Mar 4, 2026 | Integration Framework | Abstract provider interface for LMS/SIS integrations |
+| Mar 4, 2026 | Provider Support | 6 providers: Google Classroom (active), Canvas, Clever, ClassLink, PowerSchool, Schoology |
+| Mar 4, 2026 | Assignment Model | Teachers assign games to classes with grade metric config |
+| Mar 4, 2026 | Google Classroom Service | OAuth flow, course listing, student import, assignment creation, grade submission |
+| Mar 4, 2026 | Roster Sync | Import and sync students from Google Classroom courses |
+| Mar 4, 2026 | Grade Sync | Push game results as grades to LMS gradebook |
+| Mar 4, 2026 | Integrations Page | UI showing all providers with Connect/Coming Soon buttons |
+| Mar 4, 2026 | Google Courses Page | Import courses from Google Classroom |
+| Mar 4, 2026 | Dashboard LMS Link | Quick Action to connect LMS/SIS |
+| Mar 4, 2026 | ClassDetail Sync | Sync roster button for Google Classroom connected classes |
+
 
 ---
 
@@ -280,15 +295,25 @@ The platform aims to:
 - [ ] Rating-based filtering
 - [ ] Game collections/bundles
 
-### Phase 5: Payments & Monetization
+### Phase 5: LMS/SIS Integrations (COMPLETED)
+- [x] Integration framework with abstract provider interface
+- [x] Support for 6 providers: Google Classroom, Canvas, Clever, ClassLink, PowerSchool, Schoology
+- [x] Google Classroom integration (active) with Emergent OAuth
+- [x] Course import - import Google Classroom courses with students
+- [x] Roster sync - sync students from Google Classroom
+- [x] Assignment model - teachers assign games to classes
+- [x] Grade tracking - store game results per student per assignment
+- [x] Grade sync to LMS - push accuracy/score as grades to Google Classroom
+- [x] Integrations page UI with provider cards and Connect buttons
+- [x] "Coming Soon" badges for ClassLink, PowerSchool, Schoology
+- [x] Dashboard Quick Actions link to LMS/SIS connections
+- [x] ClassDetail sync roster button for Google Classroom classes
+
+### Phase 6: Payments & Monetization
 - [ ] Stripe integration for paid games
 - [ ] Creator payouts dashboard
 - [ ] Purchase history
 - [ ] Refund handling
-
-### Phase 6: Full SIS/LMS Integration
-- [ ] Google Classroom roster sync
-- [ ] Gradebook export
 
 ---
 
