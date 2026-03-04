@@ -190,6 +190,23 @@ The platform aims to:
 | Mar 4, 2026 | Provider Stubs | GoogleClassroomProvider, CanvasProvider, CleverProvider |
 | Mar 4, 2026 | Play Page Integration | Auto-submits game results to leaderboard on completion |
 
+
+### March 2026 - Phase 4: Marketplace
+
+| Date | Item | Details |
+|------|------|---------|
+| Mar 4, 2026 | Marketplace Models | MarketplaceListing, GameReview, GamePurchase, PublisherProfile |
+| Mar 4, 2026 | Marketplace Router | Browse, search, publish, unpublish, acquire, fork endpoints |
+| Mar 4, 2026 | Fork System | Users can fork games to create editable copies |
+| Mar 4, 2026 | Derivative Sales | allow_derivative_sales flag controls resale permissions |
+| Mar 4, 2026 | Resale Enforcement | Forked games blocked from publishing unless original allows |
+| Mar 4, 2026 | Marketplace Page | Browse games with category filters, featured section |
+| Mar 4, 2026 | Listing Detail Page | Game info, reviews, leaderboard, fork/acquire buttons |
+| Mar 4, 2026 | PublishDialog | Modal for publishing games with SEO and pricing options |
+| Mar 4, 2026 | Studio Publish Button | Integrated publish flow in StudioEditor header |
+| Mar 4, 2026 | Derivative Status UI | Shows resale permissions on listing pages |
+
+
 ---
 
 ## Prioritized Backlog
@@ -245,15 +262,32 @@ The platform aims to:
 - [x] Classroom service API wrapper
 - [x] Leaderboard integrated into Play page sidebar
 
-### Phase 4: Marketplace (NEXT)
-- [ ] Marketplace listings model
-- [ ] Browse/search UI
-- [ ] Publish flow
-- [ ] Purchase flow (Stripe)
+### Phase 4: Marketplace (COMPLETED)
+- [x] Marketplace models (listings, reviews, purchases)
+- [x] Browse/search UI with category filters
+- [x] Featured games section
+- [x] Game listing detail page with stats and reviews
+- [x] Publish flow with PublishDialog from Studio Editor
+- [x] Fork & Customize functionality for game duplication
+- [x] Derivative sales permission system (allow_derivative_sales flag)
+- [x] Resale restriction enforcement for forked games
+- [x] Marketplace service API wrapper
+- [x] SEO metadata support (title, description, keywords)
 
-### Phase 5: Classroom
-- [ ] Class model
-- [ ] Google Classroom integration
+### Phase 4A: Marketplace Polish (NEXT)
+- [ ] Advanced search with multiple filters
+- [ ] Price filtering (free only, max price)
+- [ ] Rating-based filtering
+- [ ] Game collections/bundles
+
+### Phase 5: Payments & Monetization
+- [ ] Stripe integration for paid games
+- [ ] Creator payouts dashboard
+- [ ] Purchase history
+- [ ] Refund handling
+
+### Phase 6: Full SIS/LMS Integration
+- [ ] Google Classroom roster sync
 - [ ] Gradebook export
 
 ---
