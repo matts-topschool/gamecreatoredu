@@ -97,14 +97,24 @@ const useAuthStore = create(
        */
       checkAuth: async () => {
         const token = localStorage.getItem('auth_token');
-        if (!token) {
+        
+        // Also check zustand persisted state
+        const persistedState = get();
+        const effectiveToken = token || persistedState.token;
+        
+        if (!effectiveToken) {
           set({ isAuthenticated: false, user: null, token: null });
           return false;
         }
 
+        // Ensure token is in localStorage
+        if (effectiveToken && !token) {
+          localStorage.setItem('auth_token', effectiveToken);
+        }
+
         try {
           const user = await authService.getCurrentUser();
-          set({ user, token, isAuthenticated: true });
+          set({ user, token: effectiveToken, isAuthenticated: true });
           return true;
         } catch (error) {
           localStorage.removeItem('auth_token');
