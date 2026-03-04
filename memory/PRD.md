@@ -164,6 +164,17 @@ The platform aims to:
 | Mar 4, 2026 | Victory Scene | Final stats, accuracy, max combo, Play Again/Exit buttons |
 | Mar 4, 2026 | Score System | Base points + combo bonus + speed bonus mechanics |
 
+### March 2026 - Phase 2D: Multi-Runtime & OpenAI Integration
+
+| Date | Item | Details |
+|------|------|---------|
+| Mar 4, 2026 | OpenAI GPT-5.1 | Switched from Claude to OpenAI for game generation |
+| Mar 4, 2026 | BattleRuntime | Monster battle game mode with enemy health, damage, combos |
+| Mar 4, 2026 | GameRuntimeSelector | Routes to correct runtime based on game_type |
+| Mar 4, 2026 | Game Type Prompts | Type-specific AI instructions for quiz, battle, adventure, etc |
+| Mar 4, 2026 | Battle Config | damage_per_correct, bonus_per_combo, speed_bonus settings |
+| Mar 4, 2026 | Enemy Entities | Enemy name, health, taunt messages, defeat message |
+
 ---
 
 ## Prioritized Backlog
@@ -197,13 +208,19 @@ The platform aims to:
 - [x] AI Refine feature (UI complete, budget-limited)
 
 ### Phase 2C: Game Runtime (COMPLETED)
-- [x] GameRuntime component with scene-based flow
-- [x] Title scene with game info and Start button
-- [x] Question scene with timer, progress, and answer options
-- [x] Feedback scene with correct/incorrect feedback
-- [x] Victory scene with stats and confetti celebration
+- [x] GameRuntime component with scene-based flow (quiz)
+- [x] BattleRuntime component for monster battle games
+- [x] GameRuntimeSelector - routes to correct runtime by game_type
+- [x] Battle mechanics: enemy health, damage system, combo multiplier
 - [x] Score system with base points, combo bonus, speed bonus
+- [x] Victory scene with stats and confetti celebration
 - [x] Play page wrapper with game loading
+
+### Phase 2D: Multi-Model AI & Game Types (COMPLETED)
+- [x] OpenAI GPT-5.1 integration for game generation
+- [x] Game-type specific AI prompts (quiz vs battle)
+- [x] Battle game spec with entities.enemy and battle_config
+- [x] Proper game_type preservation in backend models
 
 ### Phase 3: Dashboard & Analytics (NEXT)
 - [ ] Dashboard home (Bento grid enhancements)
