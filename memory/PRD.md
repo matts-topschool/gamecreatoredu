@@ -154,6 +154,30 @@ src/
 5. `enchanted_forest` - Discover magic, collect Crystal of Light
 6. `ocean_quest` - Dive deep, restore Poseidon's Trident
 
+## Battle Game Configuration
+
+### Spec Fields for Battle Games
+```json
+{
+  "meta": { "game_type": "battle" },
+  "battle_visuals": {
+    "theme": "fantasy_castle",
+    "playerCharacter": "knight",
+    "enemyType": "orc"
+  },
+  "battle_config": {
+    "rounds": 10,              // 5, 10, 15, 20, or 25 rounds
+    "timer_per_round": 30,     // 15, 30, 45, 60, or 90 seconds
+    "damage_per_correct": 25   // 10, 20, 25, 33, or 50 damage
+  }
+}
+```
+
+### Configuration Notes
+- Battle and Adventure games have their own configuration panels (ThemeSelector, AdventureWorldSelector)
+- Generic "Number of Questions" and "Duration" sliders are hidden for Battle/Adventure games
+- Quiz games still use the generic sliders for configuration
+
 ## Environment Configuration
 
 ### Frontend (.env)
@@ -169,4 +193,4 @@ src/
 - Password: `test123456`
 
 ## Last Updated
-March 5, 2026 - Implemented Enhanced Adventure Runtime with 6 worlds, artifact collection, and journey map
+March 5, 2026 - Game-type-specific configuration refactor: Battle (rounds, timer, damage), Adventure (scenes, questions per scene)
