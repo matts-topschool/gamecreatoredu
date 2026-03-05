@@ -279,17 +279,16 @@ async def google_oauth_callback(
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()  # Refresh token valid longer
     }
     
-    # Upsert - update if exists, insert if not
-    await tokens.update_one(
-        {"user_id": user_id, "provider": "google_classroom"},
-        {"$set": token_doc},
-        upsert=True
-    )
+    # Store the tokens - first delete any pending states for this user
+    await tokens.delete_many({
+        "user_id": user_id,
+        "provider": "google_classroom"
+    })
     
-    # Clean up the pending state
-    await tokens.delete_one({"state_id": state})
+    # Insert fresh token document
+    await tokens.insert_one(token_doc)
     
-    logger.info(f"Google Classroom connected for user {user_id} ({user_info.get('email')})")
+    logger.info(f"Google Classroom tokens stored for user {user_id} ({user_info.get('email')})")
     
     # Redirect to the Google Courses page
     return RedirectResponse(
