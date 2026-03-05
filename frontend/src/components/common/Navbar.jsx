@@ -101,6 +101,11 @@ const Navbar = () => {
               </>
             ) : (
               <>
+                <Link to="/marketplace">
+                  <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
+                    Marketplace
+                  </Button>
+                </Link>
                 <Link to="/pricing">
                   <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
                     Pricing
