@@ -2,13 +2,14 @@
  * GameThumbnail - Renders a mini preview of the actual game scene
  */
 import React from 'react';
-import { Gamepad2, BookOpen } from 'lucide-react';
+import { Gamepad2, BookOpen, MapPin, Compass } from 'lucide-react';
 import { 
   THEMES, 
   PLAYER_CHARACTERS, 
   ENEMIES,
   getThemeColors 
 } from '@/game/AssetCatalog';
+import { ADVENTURE_WORLDS } from '@/game/AdventureCatalog';
 
 // Mini Scene Backgrounds (simplified versions of the full scenes)
 const MiniDragonLairScene = () => (
@@ -200,6 +201,147 @@ const MiniCyberScene = () => (
   </>
 );
 
+// ============== ADVENTURE MINI SCENES ==============
+
+const MiniPirateScene = () => (
+  <>
+    {/* Ocean waves */}
+    <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-cyan-600 to-cyan-500/50" />
+    <div className="absolute bottom-4 left-[10%] w-8 h-1 bg-white/30 rounded-full" />
+    <div className="absolute bottom-5 right-[15%] w-6 h-1 bg-white/30 rounded-full" />
+    {/* Beach */}
+    <div className="absolute bottom-0 left-0 w-1/3 h-4 bg-amber-300/80 rounded-tr-full" />
+    {/* Palm tree */}
+    <div className="absolute bottom-2 left-3 text-lg">🌴</div>
+    {/* Ship */}
+    <div className="absolute bottom-6 right-4 text-sm">⛵</div>
+  </>
+);
+
+const MiniMansionScene = () => (
+  <>
+    {/* Moon */}
+    <div className="absolute top-2 right-4 w-4 h-4 bg-slate-300 rounded-full opacity-60" />
+    {/* House silhouette */}
+    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-16 h-10 bg-slate-950">
+      <div className="absolute top-1 left-2 w-2 h-3 bg-amber-500/30" />
+      <div className="absolute top-1 right-2 w-2 h-3 bg-amber-500/20" />
+    </div>
+    {/* Bats */}
+    <div className="absolute top-4 left-[25%] text-[8px]">🦇</div>
+  </>
+);
+
+const MiniSpaceAdventureScene = () => (
+  <>
+    {/* Stars */}
+    {[...Array(12)].map((_, i) => (
+      <div
+        key={i}
+        className="absolute w-0.5 h-0.5 bg-white rounded-full"
+        style={{
+          top: `${Math.random() * 70}%`,
+          left: `${Math.random() * 100}%`,
+          opacity: 0.4 + Math.random() * 0.6
+        }}
+      />
+    ))}
+    {/* Rocket */}
+    <div className="absolute bottom-4 left-1/4 text-xl">🚀</div>
+    {/* Planet */}
+    <div className="absolute top-3 right-4 w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-700 opacity-80" />
+  </>
+);
+
+const MiniEgyptScene = () => (
+  <>
+    {/* Sun */}
+    <div className="absolute top-2 right-3 w-4 h-4 bg-yellow-400 rounded-full blur-[1px]" />
+    {/* Pyramid */}
+    <div className="absolute bottom-2 left-1/3 w-8 h-6 bg-amber-500"
+      style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
+    {/* Sand */}
+    <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-t from-amber-400 to-amber-300/50" />
+    {/* Sphinx hint */}
+    <div className="absolute bottom-2 right-4 text-sm">🐪</div>
+  </>
+);
+
+const MiniForestScene = () => (
+  <>
+    {/* Magical sky */}
+    <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-purple-500/30 to-transparent" />
+    {/* Trees */}
+    <div className="absolute bottom-0 left-2 text-lg">🌲</div>
+    <div className="absolute bottom-0 right-2 text-lg">🌳</div>
+    {/* Fireflies */}
+    {[...Array(4)].map((_, i) => (
+      <div
+        key={i}
+        className="absolute w-1 h-1 bg-yellow-300 rounded-full opacity-60"
+        style={{
+          top: `${30 + Math.random() * 40}%`,
+          left: `${20 + Math.random() * 60}%`,
+        }}
+      />
+    ))}
+    {/* Mushroom */}
+    <div className="absolute bottom-1 left-1/2 text-xs">🍄</div>
+  </>
+);
+
+const MiniOceanQuestScene = () => (
+  <>
+    {/* Light rays */}
+    <div className="absolute top-0 left-[30%] w-2 h-10 bg-gradient-to-b from-cyan-300/30 to-transparent transform -rotate-6" />
+    {/* Bubbles */}
+    {[...Array(5)].map((_, i) => (
+      <div
+        key={i}
+        className="absolute rounded-full border border-white/30 bg-white/10"
+        style={{
+          width: `${3 + Math.random() * 3}px`,
+          height: `${3 + Math.random() * 3}px`,
+          bottom: `${20 + Math.random() * 40}%`,
+          left: `${Math.random() * 100}%`,
+        }}
+      />
+    ))}
+    {/* Coral */}
+    <div className="absolute bottom-0 left-3 text-sm">🪸</div>
+    {/* Fish */}
+    <div className="absolute top-1/3 right-4 text-sm">🐠</div>
+    {/* Mermaid hint */}
+    <div className="absolute bottom-4 left-1/2 text-base">🧜‍♀️</div>
+  </>
+);
+
+// Adventure scene selector
+const getAdventureMiniScene = (worldId) => {
+  const scenes = {
+    pirate_voyage: MiniPirateScene,
+    mystery_mansion: MiniMansionScene,
+    space_mission: MiniSpaceAdventureScene,
+    ancient_egypt: MiniEgyptScene,
+    enchanted_forest: MiniForestScene,
+    ocean_quest: MiniOceanQuestScene,
+  };
+  return scenes[worldId] || MiniForestScene;
+};
+
+// Adventure world gradient
+const getAdventureGradient = (worldId) => {
+  const gradients = {
+    pirate_voyage: 'from-sky-400 via-cyan-500 to-blue-600',
+    mystery_mansion: 'from-slate-900 via-purple-950 to-slate-950',
+    space_mission: 'from-slate-950 via-blue-950 to-purple-950',
+    ancient_egypt: 'from-amber-400 via-amber-500 to-amber-700',
+    enchanted_forest: 'from-indigo-600 via-purple-500 to-pink-400',
+    ocean_quest: 'from-cyan-600 via-blue-700 to-indigo-900',
+  };
+  return gradients[worldId] || 'from-amber-500 via-orange-500 to-red-500';
+};
+
 // Scene selector
 const getMiniScene = (theme) => {
   const scenes = {
@@ -257,6 +399,61 @@ const getGradient = (theme) => {
 const GameThumbnail = ({ spec, className = '' }) => {
   const gameType = spec?.meta?.game_type || 'quiz';
   const battleVisuals = spec?.battle_visuals;
+  const adventureVisuals = spec?.adventure_visuals;
+  
+  // Adventure game thumbnail
+  if (gameType === 'adventure' || gameType === 'story') {
+    const worldId = adventureVisuals?.world || 'pirate_voyage';
+    const world = ADVENTURE_WORLDS[worldId];
+    const gradient = getAdventureGradient(worldId);
+    const MiniScene = getAdventureMiniScene(worldId);
+    
+    return (
+      <div className={`aspect-video relative overflow-hidden rounded-t-xl ${className}`}>
+        {/* Background gradient */}
+        <div className={`absolute inset-0 bg-gradient-to-b ${gradient}`} />
+        
+        {/* Scene elements */}
+        {MiniScene && <MiniScene />}
+        
+        {/* Adventure journey indicator */}
+        <div className="absolute top-2 right-2 flex gap-1">
+          {[...Array(3)].map((_, i) => (
+            <div 
+              key={i} 
+              className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-amber-400' : 'bg-white/40'}`}
+            />
+          ))}
+        </div>
+        
+        {/* Player character */}
+        <div className="absolute bottom-8 left-4">
+          <span className="text-2xl">🧑‍🎤</span>
+        </div>
+        
+        {/* Artifact display */}
+        {world?.artifact && (
+          <div className="absolute bottom-8 right-4 flex gap-0.5">
+            <span className="text-lg opacity-40">{world.artifact.pieces?.[0]}</span>
+            <span className="text-lg opacity-40">{world.artifact.pieces?.[1]}</span>
+            <span className="text-lg opacity-80">{world.artifact.pieces?.[2]}</span>
+          </div>
+        )}
+        
+        {/* Game type badge */}
+        <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-amber-600/80 rounded text-[10px] text-white font-medium backdrop-blur-sm flex items-center gap-1">
+          <Compass className="w-3 h-3" />
+          Adventure
+        </div>
+        
+        {/* World badge */}
+        <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/50 rounded text-[8px] text-white/90 backdrop-blur-sm flex items-center gap-1">
+          <span>{world?.icon}</span>
+          {world?.name || 'Adventure'}
+        </div>
+      </div>
+    );
+  }
   
   // For non-battle games or games without battle visuals, show quiz style thumbnail
   if (gameType !== 'battle' || !battleVisuals) {
