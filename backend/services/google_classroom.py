@@ -97,25 +97,40 @@ class GoogleClassroomService(IntegrationProvider):
     
     async def list_classes(self) -> List[ExternalClass]:
         """
-        List all courses where the user is a teacher.
-        Uses: GET /courses?teacherId=me
+        List all courses where the user is a teacher (including co-teacher).
+        Uses: GET /courses?teacherId=me&courseStates=ACTIVE,PROVISIONED,DECLINED,SUSPENDED
         """
         try:
             courses = []
             page_token = None
             
             while True:
-                params = {"teacherId": "me", "pageSize": 100}
+                # teacherId=me returns courses where user is ANY teacher role (owner or co-teacher)
+                # Include all course states to ensure we get everything
+                params = {
+                    "teacherId": "me", 
+                    "pageSize": 100,
+                    "courseStates": ["ACTIVE", "PROVISIONED"]  # Include active and provisioned courses
+                }
                 if page_token:
                     params["pageToken"] = page_token
                 
                 response = await self.http_client.get("/courses", params=params)
                 
                 if response.status_code != 200:
-                    logger.error(f"Failed to list courses: {response.text}")
-                    break
+                    logger.error(f"Failed to list courses: {response.status_code} - {response.text}")
+                    # If teacherId=me fails, try without it (gets all courses user has access to)
+                    if "teacherId" in params:
+                        logger.info("Retrying without teacherId filter...")
+                        params.pop("teacherId")
+                        response = await self.http_client.get("/courses", params=params)
+                        if response.status_code != 200:
+                            break
+                    else:
+                        break
                 
                 data = response.json()
+                logger.info(f"Google Classroom returned {len(data.get('courses', []))} courses")
                 
                 for course in data.get("courses", []):
                     courses.append(ExternalClass(

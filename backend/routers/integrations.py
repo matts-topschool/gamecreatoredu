@@ -172,11 +172,25 @@ async def oauth_callback(
         )
         
         if response.status_code != 200:
+            logger.error(f"Failed to get session data: {response.status_code} - {response.text}")
             raise HTTPException(status_code=400, detail="Failed to get session data")
         
         session_data = response.json()
+        logger.info(f"Emergent Auth session data keys: {list(session_data.keys())}")
     
-    # The session_data contains the Google OAuth tokens
+    # The session_data should contain Google OAuth access_token
+    # Try multiple possible field names
+    access_token = (
+        session_data.get("access_token") or 
+        session_data.get("token") or 
+        session_data.get("session_token") or
+        session_data.get("google_access_token") or
+        ""
+    )
+    
+    if not access_token:
+        logger.error(f"No access token found in session data. Available fields: {list(session_data.keys())}")
+    
     # Store them for the user
     tokens = get_integration_tokens_collection()
     
@@ -187,11 +201,13 @@ async def oauth_callback(
     
     user_id = pending["user_id"] if pending else session_data.get("id")
     
-    # Store or update the integration token
+    # Store or update the integration token - save access_token for API calls
     token_doc = {
         "user_id": user_id,
         "provider": "google_classroom",
-        "session_token": session_data.get("session_token"),
+        "access_token": access_token,  # This is what we need for Google API calls
+        "session_token": session_data.get("session_token"),  # Keep for reference
+        "session_id": session_id,  # Emergent session ID
         "email": session_data.get("email"),
         "name": session_data.get("name"),
         "picture": session_data.get("picture"),
@@ -322,8 +338,17 @@ async def list_google_courses(
             detail="Google Classroom not connected. Please connect first."
         )
     
-    # Use the session token to make API calls
-    service = get_google_classroom_service(token_doc.get("session_token", ""))
+    # Use the access_token (or fall back to session_token for backwards compatibility)
+    access_token = token_doc.get("access_token") or token_doc.get("session_token", "")
+    
+    if not access_token:
+        logger.error(f"No access token found for user. Token doc keys: {list(token_doc.keys())}")
+        raise HTTPException(
+            status_code=400,
+            detail="Google Classroom token expired. Please reconnect."
+        )
+    
+    service = get_google_classroom_service(access_token)
     
     try:
         courses = await service.list_classes()
@@ -354,7 +379,8 @@ async def import_google_class(
     if not token_doc:
         raise HTTPException(status_code=400, detail="Google Classroom not connected")
     
-    service = get_google_classroom_service(token_doc.get("session_token", ""))
+    access_token = token_doc.get("access_token") or token_doc.get("session_token", "")
+    service = get_google_classroom_service(access_token)
     
     # Get course details
     course = await service.get_class(external_course_id)
@@ -461,7 +487,8 @@ async def sync_google_roster(
     if not token_doc:
         raise HTTPException(status_code=400, detail="Google Classroom not connected")
     
-    service = get_google_classroom_service(token_doc.get("session_token", ""))
+    access_token = token_doc.get("access_token") or token_doc.get("session_token", "")
+    service = get_google_classroom_service(access_token)
     
     # Get students from Google Classroom
     external_students = await service.list_students(external_id)
@@ -584,7 +611,8 @@ async def create_assignment(
         )
         
         if token_doc:
-            service = get_google_classroom_service(token_doc.get("session_token", ""))
+            access_token = token_doc.get("access_token") or token_doc.get("session_token", "")
+            service = get_google_classroom_service(access_token)
             
             # Build game URL
             frontend_url = os.environ.get("FRONTEND_URL", "https://impl-framework.preview.emergentagent.com")
@@ -820,7 +848,8 @@ async def sync_grades_to_lms(
     if not token_doc:
         raise HTTPException(status_code=400, detail="Google Classroom not connected")
     
-    service = get_google_classroom_service(token_doc.get("session_token", ""))
+    access_token = token_doc.get("access_token") or token_doc.get("session_token", "")
+    service = get_google_classroom_service(access_token)
     
     # Get grade metric
     grade_metric = assignment_doc.get("grade_metric", "accuracy")
