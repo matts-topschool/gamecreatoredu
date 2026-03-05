@@ -136,7 +136,7 @@ const GameCard = ({
   source = 'created'
 }) => {
   const navigate = useNavigate();
-  const gameType = game.spec?.meta?.game_type || 'quiz';
+  const gameType = game.spec?.meta?.game_type || game.game_type || 'quiz';
   
   return (
     <Card 
@@ -148,7 +148,7 @@ const GameCard = ({
         className="relative cursor-pointer"
         onClick={() => navigate(`/play/${game.id}`)}
       >
-        <GameThumbnail spec={game.spec} />
+        <GameThumbnail spec={game.spec || { meta: { game_type: game.game_type || 'quiz' }, battle_visuals: game.game_spec?.battle_visuals, adventure_visuals: game.game_spec?.adventure_visuals }} />
         
         {/* Overlay on hover */}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -228,64 +228,73 @@ const GameCard = ({
             </div>
           </div>
           
-          {/* Actions dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => onPlay?.(game)}>
-                <PlayCircle className="w-4 h-4 mr-2" />
-                Play Game
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onAssign?.(game)}>
-                <School className="w-4 h-4 mr-2" />
-                Assign to Class
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {source === 'created' && (
-                <>
-                  <DropdownMenuItem onClick={() => onEdit?.(game)}>
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Edit Game
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDuplicate?.(game)}>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Duplicate
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={() => onDelete?.(game)}
-                    className="text-red-600 focus:text-red-600"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-              {source !== 'created' && (
+          {/* Actions dropdown - only for created games */}
+          {source === 'created' && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => onPlay?.(game)}>
+                  <PlayCircle className="w-4 h-4 mr-2" />
+                  Play Game
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onAssign?.(game)}>
+                  <School className="w-4 h-4 mr-2" />
+                  Assign to Class
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => onEdit?.(game)}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Edit Game
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onDuplicate?.(game)}>
                   <Copy className="w-4 h-4 mr-2" />
-                  Add to My Games
+                  Duplicate
                 </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => onDelete?.(game)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
         
-        {/* Footer info */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
+        {/* Footer - different for created vs saved/purchased */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
             {formatDistanceToNow(new Date(game.updated_at || game.created_at), { addSuffix: true })}
           </span>
-          {game.play_count !== undefined && (
-            <span className="flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" />
-              {game.play_count} plays
-            </span>
+          
+          {/* Show Assign button for saved/purchased games, play count for created */}
+          {source === 'created' ? (
+            game.play_count !== undefined && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <TrendingUp className="w-3 h-3" />
+                {game.play_count} plays
+              </span>
+            )
+          ) : (
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="h-7 px-2 text-xs gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAssign?.(game);
+              }}
+            >
+              <School className="w-3 h-3" />
+              Assign
+            </Button>
           )}
         </div>
       </CardContent>

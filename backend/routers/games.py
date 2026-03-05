@@ -119,18 +119,40 @@ async def get_game(
 ):
     """
     Get a specific game by ID.
+    Allows access if:
+    1. User owns the game, OR
+    2. User has acquired/purchased the game from marketplace, OR
+    3. Game is published and public
     """
+    from core.database import get_database
+    db = get_database()
     games = get_games_collection()
+    purchases = db["game_purchases"]
     
-    game_doc = await games.find_one(
-        {"id": game_id, "owner_id": current_user["id"]},
-        {"_id": 0}
-    )
+    # First try to find the game
+    game_doc = await games.find_one({"id": game_id}, {"_id": 0})
     
     if not game_doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Game not found"
+        )
+    
+    # Check access permissions
+    is_owner = game_doc.get("owner_id") == current_user["id"]
+    is_published = game_doc.get("status") == "published" and game_doc.get("visibility") == "public"
+    
+    # Check if user has acquired the game
+    has_acquired = await purchases.find_one({
+        "game_id": game_id,
+        "buyer_id": current_user["id"],
+        "status": "completed"
+    })
+    
+    if not is_owner and not is_published and not has_acquired:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Game not found or you don't have access"
         )
     
     return game_from_db(game_doc)

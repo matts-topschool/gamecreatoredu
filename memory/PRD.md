@@ -196,4 +196,8 @@ src/
 - Password: `test123456`
 
 ## Last Updated
-March 5, 2026 - Marketplace library fix: Games acquired from marketplace now appear in "Saved" tab on My Games page. Google Classroom integration verified working.
+March 5, 2026 - Multiple UI/UX fixes:
+1. Fixed game permissions - users can now play games they've acquired from marketplace
+2. Improved Assign dialog - better alignment, replaced confusing G icon with "Classroom" badge, lowered default points to 10, added tooltip explaining points
+3. Redesigned My Games cards - removed 3-dot menu from Saved/Purchased tabs, added direct "Assign" button in footer
+4. Fixed marketplace thumbnails - now includes adventure_visuals in game_spec for proper thumbnail rendering

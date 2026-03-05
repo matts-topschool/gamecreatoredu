@@ -31,8 +31,16 @@ import {
   CheckCircle2,
   School,
   Send,
-  AlertCircle
+  AlertCircle,
+  HelpCircle,
+  Star
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -52,7 +60,7 @@ const AssignToClassDialog = ({
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [pointsPossible, setPointsPossible] = useState(100);
+  const [pointsPossible, setPointsPossible] = useState(10);
   const [syncToLms, setSyncToLms] = useState(true);
 
   useEffect(() => {
@@ -114,6 +122,7 @@ const AssignToClassDialog = ({
       setTitle('');
       setInstructions('');
       setDueDate('');
+      setPointsPossible(10);
     } catch (err) {
       console.error('Failed to create assignment:', err);
       toast.error(err.response?.data?.detail || 'Failed to create assignment');
@@ -172,10 +181,9 @@ const AssignToClassDialog = ({
                           {cls.student_count || 0} students
                         </Badge>
                         {cls.integration?.provider === 'google_classroom' && (
-                          <svg viewBox="0 0 48 48" className="w-4 h-4">
-                            <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
-                            <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
-                          </svg>
+                          <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                            Classroom
+                          </Badge>
                         )}
                       </div>
                     </SelectItem>
@@ -219,27 +227,43 @@ const AssignToClassDialog = ({
               />
             </div>
 
-            {/* Due date and points */}
+            {/* Due date and points - Better aligned grid */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Due Date (optional)
+                <Label className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  Due Date
+                  <span className="text-muted-foreground font-normal">(optional)</span>
                 </Label>
                 <Input 
                   type="datetime-local"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
+                  className="h-10"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Points</Label>
+                <Label className="flex items-center gap-1.5">
+                  <Star className="w-4 h-4 text-muted-foreground" />
+                  Points
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[200px]">
+                        <p className="text-xs">Points awarded for completing the game. Syncs to gradebook if connected to Google Classroom.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </Label>
                 <Input 
                   type="number"
                   min={0}
                   max={1000}
                   value={pointsPossible}
-                  onChange={(e) => setPointsPossible(parseInt(e.target.value) || 100)}
+                  onChange={(e) => setPointsPossible(parseInt(e.target.value) || 10)}
+                  className="h-10"
                 />
               </div>
             </div>

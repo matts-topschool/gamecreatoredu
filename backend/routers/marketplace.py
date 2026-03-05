@@ -732,7 +732,8 @@ def build_listing_from_game(game: dict, creator: dict = None, store_slug: str = 
     # Extract only visual config for thumbnail (not full content)
     visual_spec = {
         "meta": {"game_type": meta.get("game_type", "quiz")},
-        "battle_visuals": spec.get("battle_visuals")
+        "battle_visuals": spec.get("battle_visuals"),
+        "adventure_visuals": spec.get("adventure_visuals")
     }
     
     return MarketplaceListing(
