@@ -49,13 +49,16 @@ Build an AI-Powered Game Creation & Marketplace for Educators - a platform where
 - [x] Game forking with derivative permissions
 - [x] Creator stores (TpT-style profiles)
 - [x] Search and browse functionality
+- [x] Acquire free games to library
+- [x] My Games page with Created/Saved/Purchased tabs
 
 ### Phase 5: LMS/SIS Integrations (COMPLETED)
 - [x] Integration framework with provider abstraction
-- [x] Google Classroom (active)
+- [x] Google Classroom integration (direct OAuth 2.0 flow)
 - [x] 15+ provider stubs (Canvas, Clever, Arbor, etc.)
 - [x] CTF/CSV file import for UK schools
 - [x] Integrations page with navigation links
+- [x] Assign to Class dialog for games
 
 ### Phase 5A: UI Navigation (COMPLETED - March 5, 2026)
 - [x] Added "Integrations" link to landing page header
@@ -193,4 +196,4 @@ src/
 - Password: `test123456`
 
 ## Last Updated
-March 5, 2026 - Game-type-specific configuration refactor: Battle (rounds, timer, damage), Adventure (scenes, questions per scene)
+March 5, 2026 - Marketplace library fix: Games acquired from marketplace now appear in "Saved" tab on My Games page. Google Classroom integration verified working.
