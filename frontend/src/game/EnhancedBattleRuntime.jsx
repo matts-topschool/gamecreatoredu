@@ -26,11 +26,13 @@ import {
   getRandomTaunt,
   getThemeColors 
 } from './AssetCatalog';
+import { getSceneComponent } from './SceneBackgrounds';
 
 // ==================== BATTLE ARENA BACKGROUND ====================
 
 const BattleArena = ({ theme, children }) => {
   const colors = getThemeColors(theme);
+  const SceneComponent = getSceneComponent(theme);
   
   const gradients = {
     fantasy_forest: 'from-green-900 via-green-800 to-emerald-900',
@@ -38,31 +40,42 @@ const BattleArena = ({ theme, children }) => {
     fantasy_dragon_lair: 'from-red-950 via-orange-900 to-red-950',
     space_station: 'from-slate-950 via-blue-950 to-slate-950',
     space_alien_planet: 'from-purple-950 via-indigo-900 to-purple-950',
+    space_asteroid: 'from-slate-950 via-stone-900 to-slate-950',
     ocean_depths: 'from-blue-950 via-cyan-900 to-blue-950',
     ocean_coral_reef: 'from-cyan-900 via-teal-800 to-cyan-900',
+    ocean_shipwreck: 'from-slate-900 via-cyan-950 to-slate-900',
     prehistoric_jungle: 'from-green-950 via-lime-900 to-green-950',
-    myth_olympus: 'from-amber-100 via-yellow-200 to-amber-100',
+    prehistoric_volcano: 'from-stone-900 via-orange-950 to-stone-900',
+    myth_olympus: 'from-sky-300 via-amber-100 to-sky-200',
     myth_underworld: 'from-purple-950 via-fuchsia-950 to-purple-950',
+    myth_norse: 'from-slate-800 via-blue-900 to-slate-800',
     science_lab: 'from-slate-900 via-emerald-950 to-slate-900',
     science_cyber: 'from-slate-950 via-cyan-950 to-slate-950',
-    nature_arctic: 'from-slate-200 via-blue-100 to-slate-200',
-    nature_desert: 'from-amber-200 via-yellow-300 to-amber-200',
+    nature_arctic: 'from-slate-300 via-blue-200 to-slate-300',
+    nature_desert: 'from-amber-300 via-yellow-200 to-amber-300',
+    nature_storm: 'from-slate-800 via-slate-700 to-slate-800',
     spooky_haunted: 'from-slate-950 via-purple-950 to-slate-950',
+    spooky_graveyard: 'from-slate-950 via-slate-900 to-slate-950',
   };
 
   const gradient = gradients[theme] || 'from-slate-900 via-slate-800 to-slate-900';
 
   return (
-    <div className={`relative w-full h-full min-h-[500px] bg-gradient-to-b ${gradient} overflow-hidden`}>
-      {/* Animated background elements */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 right-20 w-48 h-48 bg-white/10 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-white/10 rounded-full blur-2xl animate-pulse delay-500" />
-      </div>
+    <div className={`relative w-full h-full min-h-[600px] bg-gradient-to-b ${gradient} overflow-hidden`}>
+      {/* Scene-specific background elements */}
+      {SceneComponent && <SceneComponent />}
+      
+      {/* Default animated background elements (if no scene) */}
+      {!SceneComponent && (
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 right-20 w-48 h-48 bg-white/10 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-white/10 rounded-full blur-2xl animate-pulse delay-500" />
+        </div>
+      )}
       
       {/* Ground/floor effect */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/50 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
       
       {children}
     </div>
@@ -76,21 +89,21 @@ const PlayerCharacter = ({ character, isAttacking, health, maxHealth, combo }) =
   
   return (
     <motion.div 
-      className="absolute left-8 bottom-32 flex flex-col items-center"
-      animate={isAttacking ? { x: [0, 50, 0] } : {}}
+      className="absolute left-6 top-1/3 transform -translate-y-1/2 flex flex-col items-center z-10"
+      animate={isAttacking ? { x: [0, 60, 0] } : {}}
       transition={{ duration: 0.3 }}
     >
       {/* Character sprite area */}
       <motion.div 
-        className="relative w-32 h-32 flex items-center justify-center"
-        animate={isAttacking ? { scale: [1, 1.2, 1] } : { y: [0, -5, 0] }}
+        className="relative w-28 h-28 flex items-center justify-center"
+        animate={isAttacking ? { scale: [1, 1.3, 1] } : { y: [0, -8, 0] }}
         transition={isAttacking ? { duration: 0.3 } : { duration: 2, repeat: Infinity }}
       >
         {/* Glow effect */}
-        <div className="absolute inset-0 bg-blue-500/30 rounded-full blur-xl" />
+        <div className="absolute inset-0 bg-blue-500/40 rounded-full blur-2xl" />
         
         {/* Character icon */}
-        <div className="relative z-10 text-7xl filter drop-shadow-lg">
+        <div className="relative z-10 text-6xl filter drop-shadow-lg">
           {charData.icon}
         </div>
         
@@ -108,11 +121,11 @@ const PlayerCharacter = ({ character, isAttacking, health, maxHealth, combo }) =
       </motion.div>
       
       {/* Player name and stats */}
-      <div className="mt-2 text-center">
-        <p className="text-white font-bold text-sm drop-shadow-lg">{charData.name}</p>
+      <div className="mt-1 text-center bg-black/40 px-3 py-1 rounded-lg backdrop-blur-sm">
+        <p className="text-white font-bold text-xs drop-shadow-lg">{charData.name}</p>
         
         {/* Health bar */}
-        <div className="mt-1 w-28 h-3 bg-black/50 rounded-full overflow-hidden">
+        <div className="mt-1 w-24 h-2.5 bg-black/50 rounded-full overflow-hidden border border-green-900/50">
           <motion.div 
             className="h-full bg-gradient-to-r from-green-500 to-emerald-400"
             initial={{ width: '100%' }}
@@ -120,19 +133,19 @@ const PlayerCharacter = ({ character, isAttacking, health, maxHealth, combo }) =
             transition={{ duration: 0.5 }}
           />
         </div>
-        <p className="text-xs text-green-400 mt-0.5">{health}/{maxHealth} HP</p>
-        
-        {/* Combo indicator */}
-        {combo > 1 && (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="mt-1 px-2 py-0.5 bg-yellow-500 rounded-full"
-          >
-            <span className="text-xs font-bold text-black">🔥 {combo}x COMBO</span>
-          </motion.div>
-        )}
+        <p className="text-[10px] text-green-400 mt-0.5">{health}/{maxHealth} HP</p>
       </div>
+      
+      {/* Combo indicator */}
+      {combo > 1 && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="mt-1 px-2 py-0.5 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
+        >
+          <span className="text-[10px] font-bold text-white">🔥 {combo}x COMBO</span>
+        </motion.div>
+      )}
     </motion.div>
   );
 };
@@ -145,23 +158,37 @@ const EnemyCharacter = ({ enemy, health, maxHealth, isTakingDamage, taunt }) => 
   
   return (
     <motion.div 
-      className="absolute right-8 bottom-32 flex flex-col items-center"
-      animate={isTakingDamage ? { x: [0, -20, 10, -10, 0] } : {}}
+      className="absolute right-6 top-1/3 transform -translate-y-1/2 flex flex-col items-center z-10"
+      animate={isTakingDamage ? { x: [0, -30, 15, -15, 0] } : {}}
       transition={{ duration: 0.4 }}
     >
+      {/* Taunt bubble - positioned above enemy */}
+      <AnimatePresence>
+        {taunt && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-2 max-w-[180px] p-2 bg-black/80 rounded-xl border border-red-500/50"
+          >
+            <p className="text-xs text-red-300 italic text-center">"{taunt}"</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* Enemy sprite area */}
       <motion.div 
-        className="relative w-40 h-40 flex items-center justify-center"
-        animate={isTakingDamage ? { scale: [1, 0.9, 1] } : { y: [0, -8, 0] }}
+        className="relative w-32 h-32 flex items-center justify-center"
+        animate={isTakingDamage ? { scale: [1, 0.85, 1] } : { y: [0, -10, 0] }}
         transition={isTakingDamage ? { duration: 0.3 } : { duration: 2.5, repeat: Infinity }}
       >
         {/* Danger glow */}
-        <div className={`absolute inset-0 rounded-full blur-xl transition-colors duration-300 ${
-          healthPercent > 50 ? 'bg-red-500/30' : healthPercent > 25 ? 'bg-orange-500/40' : 'bg-red-600/50'
+        <div className={`absolute inset-0 rounded-full blur-2xl transition-colors duration-300 ${
+          healthPercent > 50 ? 'bg-red-500/40' : healthPercent > 25 ? 'bg-orange-500/50' : 'bg-red-600/60'
         }`} />
         
         {/* Enemy icon */}
-        <div className="relative z-10 text-8xl filter drop-shadow-lg transform -scale-x-100">
+        <div className="relative z-10 text-7xl filter drop-shadow-lg transform -scale-x-100">
           {enemyData.icon}
         </div>
         
@@ -180,11 +207,11 @@ const EnemyCharacter = ({ enemy, health, maxHealth, isTakingDamage, taunt }) => 
       </motion.div>
       
       {/* Enemy name and health */}
-      <div className="mt-2 text-center">
-        <p className="text-white font-bold text-lg drop-shadow-lg">{enemyData.name}</p>
+      <div className="mt-1 text-center bg-black/40 px-3 py-1 rounded-lg backdrop-blur-sm">
+        <p className="text-white font-bold text-sm drop-shadow-lg">{enemyData.name}</p>
         
         {/* Health bar */}
-        <div className="mt-1 w-36 h-4 bg-black/50 rounded-full overflow-hidden border border-red-900">
+        <div className="mt-1 w-28 h-2.5 bg-black/50 rounded-full overflow-hidden border border-red-900/50">
           <motion.div 
             className={`h-full transition-colors duration-300 ${
               healthPercent > 50 ? 'bg-gradient-to-r from-red-600 to-red-400' :
@@ -196,23 +223,8 @@ const EnemyCharacter = ({ enemy, health, maxHealth, isTakingDamage, taunt }) => 
             transition={{ duration: 0.5 }}
           />
         </div>
-        <p className="text-xs text-red-400 mt-0.5">{health}/{maxHealth} HP</p>
+        <p className="text-[10px] text-red-400 mt-0.5">{health}/{maxHealth} HP</p>
       </div>
-      
-      {/* Taunt bubble */}
-      <AnimatePresence>
-        {taunt && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute -top-16 right-0 max-w-[200px] p-3 bg-black/80 rounded-xl border border-red-500/50"
-          >
-            <p className="text-sm text-red-300 italic">"{taunt}"</p>
-            <div className="absolute bottom-0 right-8 transform translate-y-2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-black/80" />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 };
