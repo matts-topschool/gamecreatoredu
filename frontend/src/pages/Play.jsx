@@ -214,6 +214,7 @@ const Play = () => {
               theme={currentGame?.spec?.battle_visuals?.theme || 'fantasy_castle'}
               playerCharacter={currentGame?.spec?.battle_visuals?.playerCharacter || 'knight'}
               enemyType={currentGame?.spec?.battle_visuals?.enemyType || 'orc'}
+              adventureWorld={currentGame?.spec?.adventure_visuals?.world || 'pirate_voyage'}
             />
           </div>
           

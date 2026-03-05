@@ -64,6 +64,7 @@ import useGameStore from '@/stores/gameStore';
 import LivePreview from '@/components/studio/LivePreview';
 import PublishDialog from '@/components/studio/PublishDialog';
 import ThemeSelector from '@/game/ThemeSelector';
+import AdventureWorldSelector from '@/game/AdventureWorldSelector';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -714,7 +715,7 @@ const StudioEditor = () => {
               </Card>
             </TabsContent>
 
-            {/* Visuals Tab - Battle Game Customization */}
+            {/* Visuals Tab - Battle & Adventure Game Customization */}
             <TabsContent value="visuals" className="mt-4">
               {currentSpec?.meta?.game_type === 'battle' ? (
                 <ThemeSelector
@@ -726,15 +727,24 @@ const StudioEditor = () => {
                   onEnemyChange={(enemy) => updateSpec('battle_visuals.enemyType', enemy)}
                   gameType="battle"
                 />
+              ) : currentSpec?.meta?.game_type === 'adventure' ? (
+                <AdventureWorldSelector
+                  selectedWorld={currentSpec?.adventure_visuals?.world || 'pirate_voyage'}
+                  onWorldChange={(world) => updateSpec('adventure_visuals.world', world)}
+                  sceneCount={currentSpec?.adventure_config?.scene_count || 5}
+                  onSceneCountChange={(count) => updateSpec('adventure_config.scene_count', count)}
+                  questionsPerScene={currentSpec?.adventure_config?.questions_per_scene || 2}
+                  onQuestionsPerSceneChange={(count) => updateSpec('adventure_config.questions_per_scene', count)}
+                />
               ) : (
                 <Card>
                   <CardContent className="py-12 text-center">
                     <Gamepad2 className="w-12 h-12 mx-auto mb-4 text-slate-300" />
                     <h3 className="text-lg font-semibold mb-2">Visual Customization</h3>
                     <p className="text-muted-foreground max-w-md mx-auto">
-                      Visual customization is available for <strong>Monster Battle</strong> games. 
-                      Change the game type to "Monster Battle" in the Info tab to unlock arena themes, 
-                      hero characters, and enemy selection.
+                      Visual customization is available for <strong>Monster Battle</strong> and <strong>Adventure</strong> games. 
+                      Change the game type in the Info tab to unlock visual customization options like
+                      arena themes, characters, or adventure worlds.
                     </p>
                   </CardContent>
                 </Card>

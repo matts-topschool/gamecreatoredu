@@ -38,6 +38,7 @@ import useGameStore from '@/stores/gameStore';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import ThemeSelector from '@/game/ThemeSelector';
+import AdventureWorldSelector from '@/game/AdventureWorldSelector';
 import GameRuntimeSelector from '@/components/game/GameRuntimeSelector';
 
 const examplePrompts = [
@@ -131,6 +132,11 @@ const StudioNew = () => {
   const [selectedCharacter, setSelectedCharacter] = useState('knight');
   const [selectedEnemy, setSelectedEnemy] = useState('orc');
   const [showLivePreview, setShowLivePreview] = useState(false);
+
+  // Adventure customization state
+  const [selectedWorld, setSelectedWorld] = useState('pirate_voyage');
+  const [adventureSceneCount, setAdventureSceneCount] = useState(5);
+  const [adventureQuestionsPerScene, setAdventureQuestionsPerScene] = useState(2);
 
   // Poll for compilation status
   const pollForCompletion = async (taskId, maxAttempts = 60) => {
@@ -229,14 +235,24 @@ const StudioNew = () => {
 
     try {
       const gradeNum = gradeLevel ? parseInt(gradeLevel) : null;
+      const specGameType = compiledSpec.meta?.game_type || gameType;
       
       // Add battle visuals to spec if it's a battle game
       const specWithVisuals = {
         ...compiledSpec,
-        battle_visuals: (compiledSpec.meta?.game_type === 'battle' || gameType === 'battle') ? {
+        battle_visuals: (specGameType === 'battle') ? {
           theme: selectedTheme,
           playerCharacter: selectedCharacter,
           enemyType: selectedEnemy
+        } : undefined,
+        adventure_visuals: (specGameType === 'adventure') ? {
+          world: selectedWorld,
+          scene_count: adventureSceneCount,
+          questions_per_scene: adventureQuestionsPerScene
+        } : undefined,
+        adventure_config: (specGameType === 'adventure') ? {
+          scene_count: adventureSceneCount,
+          questions_per_scene: adventureQuestionsPerScene
         } : undefined
       };
       
@@ -541,6 +557,18 @@ const StudioNew = () => {
                 />
               )}
 
+              {/* World Selector for Adventure Games */}
+              {(compiledSpec.meta?.game_type === 'adventure' || gameType === 'adventure') && (
+                <AdventureWorldSelector
+                  selectedWorld={selectedWorld}
+                  onWorldChange={setSelectedWorld}
+                  sceneCount={adventureSceneCount}
+                  onSceneCountChange={setAdventureSceneCount}
+                  questionsPerScene={adventureQuestionsPerScene}
+                  onQuestionsPerSceneChange={setAdventureQuestionsPerScene}
+                />
+              )}
+
               {/* Live Game Preview */}
               {showLivePreview ? (
                 <div className="rounded-2xl overflow-hidden border border-slate-700">
@@ -555,6 +583,7 @@ const StudioNew = () => {
                     theme={selectedTheme}
                     playerCharacter={selectedCharacter}
                     enemyType={selectedEnemy}
+                    adventureWorld={selectedWorld}
                   />
                 </div>
               ) : (

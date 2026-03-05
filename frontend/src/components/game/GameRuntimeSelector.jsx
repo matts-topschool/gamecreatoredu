@@ -1,11 +1,12 @@
 /**
  * GameRuntimeSelector - Routes to the appropriate game runtime based on game type.
- * Supports: quiz, battle (enhanced), adventure (coming), platformer (coming), puzzle (coming), simulation (coming)
+ * Supports: quiz, battle (enhanced), adventure (enhanced), platformer (coming), puzzle (coming), simulation (coming)
  */
 import React from 'react';
 import GameRuntime from './GameRuntime';
 import BattleRuntime from './BattleRuntime';
 import EnhancedBattleRuntime from '../../game/EnhancedBattleRuntime';
+import EnhancedAdventureRuntime from '../../game/EnhancedAdventureRuntime';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Gamepad2, Construction, Sparkles } from 'lucide-react';
@@ -44,6 +45,7 @@ const ComingSoonRuntime = ({ spec, gameType, onExit }) => (
  * - theme: Battle arena theme (from AssetCatalog)
  * - playerCharacter: Selected player character (from AssetCatalog)
  * - enemyType: Selected enemy type (from AssetCatalog)
+ * - adventureWorld: Adventure world theme (from AdventureCatalog)
  * - fallbackToQuiz: If true, unsupported types fall back to quiz
  */
 const GameRuntimeSelector = ({ 
@@ -57,6 +59,7 @@ const GameRuntimeSelector = ({
   theme = 'fantasy_castle',
   playerCharacter = 'knight',
   enemyType = 'orc',
+  adventureWorld = 'pirate_voyage',
   fallbackToQuiz = true
 }) => {
   const gameType = spec?.meta?.game_type?.toLowerCase() || 'quiz';
@@ -101,8 +104,32 @@ const GameRuntimeSelector = ({
         />
       );
     
-    // Future game types - for now, fall back to quiz or show coming soon
     case 'adventure':
+    case 'story':
+      // Use enhanced adventure runtime
+      if (useEnhancedGraphics) {
+        return (
+          <EnhancedAdventureRuntime
+            spec={spec}
+            onComplete={onComplete}
+            onExit={onExit}
+            world={adventureWorld}
+          />
+        );
+      }
+      // Fallback to quiz if enhanced disabled
+      return (
+        <GameRuntime
+          spec={spec}
+          onComplete={onComplete}
+          onExit={onExit}
+          sessionId={sessionId}
+          playerId={playerId}
+          playerName={playerName}
+        />
+      );
+    
+    // Future game types - for now, fall back to quiz or show coming soon
     case 'platformer':
     case 'puzzle':
     case 'simulation':
