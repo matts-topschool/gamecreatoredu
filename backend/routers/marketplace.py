@@ -723,6 +723,12 @@ def build_listing_from_game(game: dict, creator: dict = None, store_slug: str = 
     spec = game.get("spec", {})
     meta = spec.get("meta", {})
     
+    # Extract only visual config for thumbnail (not full content)
+    visual_spec = {
+        "meta": {"game_type": meta.get("game_type", "quiz")},
+        "battle_visuals": spec.get("battle_visuals")
+    }
+    
     return MarketplaceListing(
         id=game["id"],
         title=game.get("title", "Untitled"),
@@ -736,6 +742,7 @@ def build_listing_from_game(game: dict, creator: dict = None, store_slug: str = 
         game_type=meta.get("game_type", game.get("spec", {}).get("meta", {}).get("game_type", "quiz")),
         grade_levels=game.get("grade_levels", []),
         subjects=game.get("subjects", []),
+        game_spec=visual_spec,
         category=game.get("marketplace_category"),
         subcategory=game.get("marketplace_subcategory"),
         tags=game.get("marketplace_tags", []),

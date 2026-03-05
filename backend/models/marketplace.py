@@ -167,6 +167,9 @@ class MarketplaceListing(BaseModel):
     grade_levels: List[int]
     subjects: List[str]
     
+    # Game spec (for thumbnail preview - only includes visual config, not full content)
+    game_spec: Optional[Dict[str, Any]] = None
+    
     # Marketplace specific
     category: Optional[str] = None
     subcategory: Optional[str] = None

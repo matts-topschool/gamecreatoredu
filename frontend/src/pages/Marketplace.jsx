@@ -39,20 +39,20 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import marketplaceService from '@/services/marketplaceService';
+import GameThumbnail from '@/components/game/GameThumbnail';
 import { cn } from '@/lib/utils';
 
 /**
  * Game Card Component
  */
 const GameCard = ({ listing, onClick }) => {
-  const gameTypeIcons = {
-    quiz: BookOpen,
-    battle: Gamepad2,
-    adventure: Sparkles,
-    platformer: Trophy,
+  // Build a mock spec object for GameThumbnail
+  const mockSpec = {
+    meta: {
+      game_type: listing.game_type
+    },
+    battle_visuals: listing.game_spec?.battle_visuals || null
   };
-  
-  const Icon = gameTypeIcons[listing.game_type] || Gamepad2;
 
   return (
     <Card 
@@ -61,7 +61,7 @@ const GameCard = ({ listing, onClick }) => {
       data-testid={`game-card-${listing.id}`}
     >
       {/* Thumbnail */}
-      <div className="relative h-40 bg-gradient-to-br from-violet-500 to-indigo-600 overflow-hidden">
+      <div className="relative h-40 overflow-hidden">
         {listing.thumbnail_url ? (
           <img 
             src={listing.thumbnail_url} 
@@ -69,13 +69,11 @@ const GameCard = ({ listing, onClick }) => {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Icon className="w-16 h-16 text-white/30" />
-          </div>
+          <GameThumbnail spec={mockSpec} className="w-full h-full" />
         )}
         
         {/* Price Badge */}
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-3 right-3 z-10">
           <Badge className={cn(
             "text-sm font-semibold",
             listing.is_free 
@@ -83,14 +81,6 @@ const GameCard = ({ listing, onClick }) => {
               : "bg-amber-500 text-white"
           )}>
             {listing.is_free ? 'Free' : `$${(listing.price_cents / 100).toFixed(2)}`}
-          </Badge>
-        </div>
-        
-        {/* Game Type */}
-        <div className="absolute bottom-3 left-3">
-          <Badge variant="secondary" className="bg-black/50 text-white border-0 capitalize">
-            <Icon className="w-3 h-3 mr-1" />
-            {listing.game_type}
           </Badge>
         </div>
       </div>
