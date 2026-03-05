@@ -102,6 +102,11 @@ const Navbar = () => {
                     About
                   </Button>
                 </Link>
+                <Link to="/integrations">
+                  <Button variant="ghost" className="text-muted-foreground hover:text-foreground" data-testid="nav-integrations">
+                    Integrations
+                  </Button>
+                </Link>
               </>
             )}
           </div>

@@ -12,7 +12,8 @@ import {
   Store,
   Settings,
   Plus,
-  Sparkles
+  Sparkles,
+  Link2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ const navItems = [
     items: [
       { label: 'Classes', href: '/dashboard/classes', icon: Users },
       { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+      { label: 'Integrations', href: '/integrations', icon: Link2 },
     ]
   },
   {

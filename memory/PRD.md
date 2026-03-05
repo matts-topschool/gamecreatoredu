@@ -320,6 +320,10 @@ The platform aims to:
 - [x] Provider cards with region badges (US/UK)
 - [x] File Import page with drag-and-drop, preview, and import flow
 
+### Phase 5A: UI Navigation Improvements (COMPLETED)
+- [x] Added "Integrations" link to landing page header navigation
+- [x] Added "Integrations" link to dashboard sidebar under "Classroom" section
+
 ### Phase 6: Payments & Monetization
 - [ ] Stripe integration for paid games
 - [ ] Creator payouts dashboard
