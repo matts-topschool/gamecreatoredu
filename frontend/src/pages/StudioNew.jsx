@@ -155,7 +155,16 @@ const StudioNew = () => {
       }
     } catch (error) {
       console.error('Compilation error:', error);
-      const message = error.response?.data?.detail || 'Failed to compile game';
+      let message = 'Failed to compile game';
+      
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        message = 'Request timed out. AI generation can take 30-90 seconds for complex games. Please try again.';
+      } else if (error.response?.data?.detail) {
+        message = error.response.data.detail;
+      } else if (error.message) {
+        message = error.message;
+      }
+      
       setCompilationError(message);
       toast.error(message);
     } finally {
@@ -382,7 +391,7 @@ const StudioNew = () => {
                 {isCompiling ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    AI is creating your game...
+                    AI is creating your game (30-60 sec)...
                   </>
                 ) : (
                   <>
