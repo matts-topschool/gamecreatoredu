@@ -310,13 +310,17 @@ const MarketplaceListing = () => {
                     </h1>
                     <p className="text-muted-foreground">
                       by{' '}
-                      <Link 
-                        to={`/store/${listing.creator_id}`} 
-                        className="text-violet-600 font-medium hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {listing.creator_name}
-                      </Link>
+                      {listing.creator_store_slug ? (
+                        <Link 
+                          to={`/store/${listing.creator_store_slug}`} 
+                          className="text-violet-600 font-medium hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {listing.creator_name}
+                        </Link>
+                      ) : (
+                        <span className="text-violet-600 font-medium">{listing.creator_name}</span>
+                      )}
                     </p>
                   </div>
                   

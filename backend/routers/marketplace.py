@@ -155,11 +155,17 @@ async def browse_marketplace(
     
     # Build listings with creator info
     listings = []
+    stores = get_stores_collection()
+    
     async for doc in cursor:
         # Get creator info
         creator = await users.find_one({"id": doc["owner_id"]}, {"_id": 0, "display_name": 1, "avatar_url": 1})
         
-        listing = build_listing_from_game(doc, creator)
+        # Get creator's store slug
+        store = await stores.find_one({"user_id": doc["owner_id"]}, {"_id": 0, "slug": 1})
+        store_slug = store.get("slug") if store else None
+        
+        listing = build_listing_from_game(doc, creator, store_slug)
         listings.append(listing)
     
     # Calculate total pages
@@ -712,7 +718,7 @@ async def get_publisher_profile(
 
 # ============== Helper Functions ==============
 
-def build_listing_from_game(game: dict, creator: dict = None) -> MarketplaceListing:
+def build_listing_from_game(game: dict, creator: dict = None, store_slug: str = None) -> MarketplaceListing:
     """Convert a game document to a marketplace listing."""
     spec = game.get("spec", {})
     meta = spec.get("meta", {})
@@ -726,6 +732,7 @@ def build_listing_from_game(game: dict, creator: dict = None) -> MarketplaceList
         creator_id=game["owner_id"],
         creator_name=creator.get("display_name", "Unknown") if creator else "Unknown",
         creator_avatar=creator.get("avatar_url") if creator else None,
+        creator_store_slug=store_slug,
         game_type=meta.get("game_type", game.get("spec", {}).get("meta", {}).get("game_type", "quiz")),
         grade_levels=game.get("grade_levels", []),
         subjects=game.get("subjects", []),

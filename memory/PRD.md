@@ -289,11 +289,17 @@ The platform aims to:
 - [x] Marketplace service API wrapper
 - [x] SEO metadata support (title, description, keywords)
 
-### Phase 4A: Marketplace Polish (NEXT)
-- [ ] Advanced search with multiple filters
-- [ ] Price filtering (free only, max price)
-- [ ] Rating-based filtering
-- [ ] Game collections/bundles
+### Phase 4A: Marketplace Polish with Creator Stores (COMPLETED)
+- [x] TpT-style Creator Stores with custom branding
+- [x] Store pages with banner, logo, tagline, about section
+- [x] Store stats: products, downloads, followers, rating
+- [x] Follow/unfollow stores
+- [x] Featured products section on store pages
+- [x] Product sorting: newest, popular, rating, price
+- [x] Grid/list view toggle
+- [x] Creator name links to their store from listings
+- [x] Social links: website, Twitter, YouTube, Instagram
+- [x] Store badges: verified, featured seller
 
 ### Phase 5: LMS/SIS Integrations (COMPLETED)
 - [x] Integration framework with abstract provider interface

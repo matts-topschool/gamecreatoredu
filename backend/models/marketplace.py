@@ -160,6 +160,7 @@ class MarketplaceListing(BaseModel):
     creator_id: str
     creator_name: str
     creator_avatar: Optional[str] = None
+    creator_store_slug: Optional[str] = None  # Link to creator's store
     
     # Game type & settings
     game_type: str
