@@ -57,7 +57,7 @@ export const THEMES = {
     category: 'space',
     description: 'Dangerous space rocks',
     colors: { primary: '#0d0d0d', secondary: '#4a4a4a', accent: '#87ceeb' },
-    free: false
+    free: true
   },
 
   // Ocean Themes
@@ -83,7 +83,7 @@ export const THEMES = {
     category: 'ocean',
     description: 'Haunted underwater wreckage',
     colors: { primary: '#1a3a3a', secondary: '#8b4513', accent: '#daa520' },
-    free: false
+    free: true
   },
 
   // Prehistoric Themes
@@ -101,7 +101,7 @@ export const THEMES = {
     category: 'prehistoric',
     description: 'Erupting prehistoric landscape',
     colors: { primary: '#2f2f2f', secondary: '#ff4500', accent: '#ffa500' },
-    free: false
+    free: true
   },
 
   // Mythology Themes
@@ -127,7 +127,7 @@ export const THEMES = {
     category: 'mythology',
     description: 'Realm of Norse gods',
     colors: { primary: '#1e3d59', secondary: '#c0c0c0', accent: '#ffd700' },
-    free: false
+    free: true
   },
 
   // Science Themes
@@ -171,7 +171,7 @@ export const THEMES = {
     category: 'nature',
     description: 'Mountain summit in a thunderstorm',
     colors: { primary: '#2f4f4f', secondary: '#4682b4', accent: '#ffff00' },
-    free: false
+    free: true
   },
 
   // Spooky Themes
@@ -189,7 +189,7 @@ export const THEMES = {
     category: 'spooky',
     description: 'Foggy cemetery at night',
     colors: { primary: '#0d0d0d', secondary: '#483d8b', accent: '#b0c4de' },
-    free: false
+    free: true
   }
 };
 
@@ -225,7 +225,7 @@ export const PLAYER_CHARACTERS = {
     description: 'Fierce Norse warrior',
     attackStyle: 'smash',
     compatibleThemes: ['fantasy', 'mythology', 'nature'],
-    free: false
+    free: true
   },
 
   // Mages
@@ -247,7 +247,7 @@ export const PLAYER_CHARACTERS = {
     description: 'Controller of the undead',
     attackStyle: 'dark_magic',
     compatibleThemes: ['fantasy', 'spooky'],
-    free: false
+    free: true
   },
 
   // Space Heroes
@@ -279,7 +279,7 @@ export const PLAYER_CHARACTERS = {
     description: 'Advanced combat droid',
     attackStyle: 'laser',
     compatibleThemes: ['space', 'science'],
-    free: false
+    free: true
   },
 
   // Ocean Heroes
@@ -345,7 +345,7 @@ export const PLAYER_CHARACTERS = {
     description: 'Half human, half machine',
     attackStyle: 'tech',
     compatibleThemes: ['science', 'space'],
-    free: false
+    free: true
   },
 
   // Mythological Heroes
@@ -367,7 +367,7 @@ export const PLAYER_CHARACTERS = {
     description: 'Ancient Egyptian ruler',
     attackStyle: 'sand_magic',
     compatibleThemes: ['mythology', 'nature'],
-    free: false
+    free: true
   }
 };
 
@@ -421,7 +421,7 @@ export const ENEMIES = {
     health: 120,
     tauntStyle: 'mysterious',
     compatibleThemes: ['fantasy', 'spooky'],
-    free: false
+    free: true
   },
 
   // Space Enemies
@@ -459,7 +459,7 @@ export const ENEMIES = {
     health: 150,
     tauntStyle: 'eldritch',
     compatibleThemes: ['space'],
-    free: false
+    free: true
   },
   rogue_ai: {
     id: 'rogue_ai',
@@ -509,7 +509,7 @@ export const ENEMIES = {
     health: 140,
     tauntStyle: 'ancient',
     compatibleThemes: ['ocean', 'mythology'],
-    free: false
+    free: true
   },
 
   // Prehistoric Enemies
@@ -547,7 +547,7 @@ export const ENEMIES = {
     health: 70,
     tauntStyle: 'screeching',
     compatibleThemes: ['prehistoric'],
-    free: false
+    free: true
   },
 
   // Mythology Enemies
@@ -585,7 +585,7 @@ export const ENEMIES = {
     health: 150,
     tauntStyle: 'growling',
     compatibleThemes: ['mythology', 'spooky'],
-    free: false
+    free: true
   },
   cyclops: {
     id: 'cyclops',
@@ -635,7 +635,7 @@ export const ENEMIES = {
     health: 80,
     tauntStyle: 'corrupting',
     compatibleThemes: ['science'],
-    free: false
+    free: true
   },
 
   // Spooky Enemies
@@ -673,7 +673,7 @@ export const ENEMIES = {
     health: 100,
     tauntStyle: 'howling',
     compatibleThemes: ['spooky', 'nature'],
-    free: false
+    free: true
   },
   skeleton_king: {
     id: 'skeleton_king',
@@ -723,7 +723,7 @@ export const ENEMIES = {
     health: 130,
     tauntStyle: 'roaring',
     compatibleThemes: ['nature'],
-    free: false
+    free: true
   }
 };
 
