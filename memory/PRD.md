@@ -297,17 +297,22 @@ The platform aims to:
 
 ### Phase 5: LMS/SIS Integrations (COMPLETED)
 - [x] Integration framework with abstract provider interface
-- [x] Support for 6 providers: Google Classroom, Canvas, Clever, ClassLink, PowerSchool, Schoology
+- [x] Support for 16 providers organized by region (Global, US, UK)
+- [x] **Global**: Google Classroom (active), Canvas LMS
+- [x] **US**: Clever, ClassLink, PowerSchool, Schoology, Alma SIS
+- [x] **UK**: Arbor Education, SIMS (Capita), Bromcom MIS, ScholarPack, iSAMS, Groupcall Xporter, Wonde
+- [x] **File Import**: CTF File Import (UK), CSV/Excel Import (Global)
 - [x] Google Classroom integration (active) with Emergent OAuth
-- [x] Course import - import Google Classroom courses with students
-- [x] Roster sync - sync students from Google Classroom
+- [x] Course import - import courses with students
+- [x] Roster sync - sync students from LMS
 - [x] Assignment model - teachers assign games to classes
-- [x] Grade tracking - store game results per student per assignment
-- [x] Grade sync to LMS - push accuracy/score as grades to Google Classroom
-- [x] Integrations page UI with provider cards and Connect buttons
-- [x] "Coming Soon" badges for ClassLink, PowerSchool, Schoology
-- [x] Dashboard Quick Actions link to LMS/SIS connections
-- [x] ClassDetail sync roster button for Google Classroom classes
+- [x] Grade tracking - store game results per student
+- [x] Grade sync to LMS - push accuracy/score as grades
+- [x] CTF Parser - UK Common Transfer File support (v15.0, v17.0, v18.0)
+- [x] CSV Parser - Support for SIMS, Arbor, Bromcom, Generic formats
+- [x] Integrations page with region tabs (All/Global/US/UK/Import)
+- [x] Provider cards with region badges (US/UK)
+- [x] File Import page with drag-and-drop, preview, and import flow
 
 ### Phase 6: Payments & Monetization
 - [ ] Stripe integration for paid games
