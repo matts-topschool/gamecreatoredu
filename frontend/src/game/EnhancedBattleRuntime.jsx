@@ -89,13 +89,13 @@ const PlayerCharacter = ({ character, isAttacking, health, maxHealth, combo }) =
   
   return (
     <motion.div 
-      className="absolute left-6 top-1/3 transform -translate-y-1/2 flex flex-col items-center z-10"
+      className="absolute left-4 top-[18%] flex flex-col items-center z-10"
       animate={isAttacking ? { x: [0, 60, 0] } : {}}
       transition={{ duration: 0.3 }}
     >
       {/* Character sprite area */}
       <motion.div 
-        className="relative w-28 h-28 flex items-center justify-center"
+        className="relative w-24 h-24 flex items-center justify-center"
         animate={isAttacking ? { scale: [1, 1.3, 1] } : { y: [0, -8, 0] }}
         transition={isAttacking ? { duration: 0.3 } : { duration: 2, repeat: Infinity }}
       >
@@ -103,7 +103,7 @@ const PlayerCharacter = ({ character, isAttacking, health, maxHealth, combo }) =
         <div className="absolute inset-0 bg-blue-500/40 rounded-full blur-2xl" />
         
         {/* Character icon */}
-        <div className="relative z-10 text-6xl filter drop-shadow-lg">
+        <div className="relative z-10 text-5xl filter drop-shadow-lg">
           {charData.icon}
         </div>
         
@@ -121,11 +121,11 @@ const PlayerCharacter = ({ character, isAttacking, health, maxHealth, combo }) =
       </motion.div>
       
       {/* Player name and stats */}
-      <div className="mt-1 text-center bg-black/40 px-3 py-1 rounded-lg backdrop-blur-sm">
-        <p className="text-white font-bold text-xs drop-shadow-lg">{charData.name}</p>
+      <div className="mt-1 text-center bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm">
+        <p className="text-white font-bold text-[10px] drop-shadow-lg">{charData.name}</p>
         
         {/* Health bar */}
-        <div className="mt-1 w-24 h-2.5 bg-black/50 rounded-full overflow-hidden border border-green-900/50">
+        <div className="mt-0.5 w-20 h-2 bg-black/50 rounded-full overflow-hidden border border-green-900/50">
           <motion.div 
             className="h-full bg-gradient-to-r from-green-500 to-emerald-400"
             initial={{ width: '100%' }}
@@ -133,7 +133,7 @@ const PlayerCharacter = ({ character, isAttacking, health, maxHealth, combo }) =
             transition={{ duration: 0.5 }}
           />
         </div>
-        <p className="text-[10px] text-green-400 mt-0.5">{health}/{maxHealth} HP</p>
+        <p className="text-[9px] text-green-400 mt-0.5">{health}/{maxHealth} HP</p>
       </div>
       
       {/* Combo indicator */}
@@ -143,7 +143,7 @@ const PlayerCharacter = ({ character, isAttacking, health, maxHealth, combo }) =
           animate={{ scale: 1 }}
           className="mt-1 px-2 py-0.5 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full"
         >
-          <span className="text-[10px] font-bold text-white">🔥 {combo}x COMBO</span>
+          <span className="text-[9px] font-bold text-white">🔥 {combo}x COMBO</span>
         </motion.div>
       )}
     </motion.div>
@@ -158,7 +158,7 @@ const EnemyCharacter = ({ enemy, health, maxHealth, isTakingDamage, taunt }) => 
   
   return (
     <motion.div 
-      className="absolute right-6 top-1/3 transform -translate-y-1/2 flex flex-col items-center z-10"
+      className="absolute right-4 top-[18%] flex flex-col items-center z-10"
       animate={isTakingDamage ? { x: [0, -30, 15, -15, 0] } : {}}
       transition={{ duration: 0.4 }}
     >
@@ -169,16 +169,16 @@ const EnemyCharacter = ({ enemy, health, maxHealth, isTakingDamage, taunt }) => 
             initial={{ opacity: 0, y: 10, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10 }}
-            className="mb-2 max-w-[180px] p-2 bg-black/80 rounded-xl border border-red-500/50"
+            className="mb-1 max-w-[150px] p-1.5 bg-black/80 rounded-xl border border-red-500/50"
           >
-            <p className="text-xs text-red-300 italic text-center">"{taunt}"</p>
+            <p className="text-[10px] text-red-300 italic text-center">"{taunt}"</p>
           </motion.div>
         )}
       </AnimatePresence>
       
       {/* Enemy sprite area */}
       <motion.div 
-        className="relative w-32 h-32 flex items-center justify-center"
+        className="relative w-28 h-28 flex items-center justify-center"
         animate={isTakingDamage ? { scale: [1, 0.85, 1] } : { y: [0, -10, 0] }}
         transition={isTakingDamage ? { duration: 0.3 } : { duration: 2.5, repeat: Infinity }}
       >
@@ -188,7 +188,7 @@ const EnemyCharacter = ({ enemy, health, maxHealth, isTakingDamage, taunt }) => 
         }`} />
         
         {/* Enemy icon */}
-        <div className="relative z-10 text-7xl filter drop-shadow-lg transform -scale-x-100">
+        <div className="relative z-10 text-6xl filter drop-shadow-lg transform -scale-x-100">
           {enemyData.icon}
         </div>
         
@@ -207,11 +207,11 @@ const EnemyCharacter = ({ enemy, health, maxHealth, isTakingDamage, taunt }) => 
       </motion.div>
       
       {/* Enemy name and health */}
-      <div className="mt-1 text-center bg-black/40 px-3 py-1 rounded-lg backdrop-blur-sm">
-        <p className="text-white font-bold text-sm drop-shadow-lg">{enemyData.name}</p>
+      <div className="mt-1 text-center bg-black/50 px-2 py-1 rounded-lg backdrop-blur-sm">
+        <p className="text-white font-bold text-[10px] drop-shadow-lg">{enemyData.name}</p>
         
         {/* Health bar */}
-        <div className="mt-1 w-28 h-2.5 bg-black/50 rounded-full overflow-hidden border border-red-900/50">
+        <div className="mt-0.5 w-24 h-2 bg-black/50 rounded-full overflow-hidden border border-red-900/50">
           <motion.div 
             className={`h-full transition-colors duration-300 ${
               healthPercent > 50 ? 'bg-gradient-to-r from-red-600 to-red-400' :
@@ -223,7 +223,7 @@ const EnemyCharacter = ({ enemy, health, maxHealth, isTakingDamage, taunt }) => 
             transition={{ duration: 0.5 }}
           />
         </div>
-        <p className="text-[10px] text-red-400 mt-0.5">{health}/{maxHealth} HP</p>
+        <p className="text-[9px] text-red-400 mt-0.5">{health}/{maxHealth} HP</p>
       </div>
     </motion.div>
   );
@@ -830,7 +830,7 @@ const EnhancedBattleRuntime = ({
               key={dn.id}
               damage={dn.damage}
               isCombo={dn.isCombo}
-              position="right-24 top-1/3"
+              position="right-20 top-[22%]"
             />
           ))}
         </AnimatePresence>
