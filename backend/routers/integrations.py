@@ -9,6 +9,7 @@ from pydantic import BaseModel
 import httpx
 import logging
 import os
+import urllib.parse
 
 from core.database import get_database
 from core.security import get_current_user
@@ -36,8 +37,25 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/integrations", tags=["Integrations"])
 
-# Emergent Auth endpoint for session data
+# Emergent Auth endpoint for session data (for basic login, not Classroom)
 EMERGENT_AUTH_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+
+# Google OAuth for Classroom (direct integration)
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+
+# Required scopes for Google Classroom
+GOOGLE_CLASSROOM_SCOPES = [
+    "https://www.googleapis.com/auth/classroom.courses.readonly",
+    "https://www.googleapis.com/auth/classroom.rosters.readonly",
+    "https://www.googleapis.com/auth/classroom.coursework.students",
+    "https://www.googleapis.com/auth/classroom.profile.emails",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+]
 
 
 def get_classes_collection():
@@ -108,7 +126,7 @@ async def initiate_oauth(
     Initiate OAuth flow for an LMS/SIS provider.
     Returns the URL to redirect the user to.
     
-    For Google Classroom, uses Emergent Auth which handles Google OAuth.
+    For Google Classroom, uses direct Google OAuth with Classroom scopes.
     """
     if request.provider != "google_classroom":
         # Check if provider exists but is coming soon
@@ -119,6 +137,13 @@ async def initiate_oauth(
                 detail=f"{provider_info['name']} integration is coming soon!"
             )
         raise HTTPException(status_code=400, detail=f"Unsupported provider: {request.provider}")
+    
+    # Check if Google OAuth is configured
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        raise HTTPException(
+            status_code=500,
+            detail="Google Classroom integration not configured. Please contact administrator."
+        )
     
     # Store pending OAuth state
     tokens = get_integration_tokens_collection()
@@ -134,12 +159,21 @@ async def initiate_oauth(
         "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     })
     
-    # For Google Classroom, redirect to Emergent Auth with classroom scopes
-    # The redirect_uri should be our callback endpoint
-    callback_url = f"{request.redirect_uri.rsplit('/', 1)[0]}/integrations/callback"
+    # Build Google OAuth URL with Classroom scopes
+    params = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": " ".join(GOOGLE_CLASSROOM_SCOPES),
+        "state": state_id,
+        "access_type": "offline",  # Get refresh token
+        "prompt": "consent",  # Always show consent to get refresh token
+        "include_granted_scopes": "true"
+    }
     
-    # Emergent Auth URL - it will redirect back with session_id
-    auth_url = f"https://auth.emergentagent.com/?redirect={callback_url}&state={state_id}"
+    auth_url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
+    
+    logger.info(f"Initiating Google Classroom OAuth for user {current_user['id']}")
     
     return {
         "auth_url": auth_url,
@@ -148,101 +182,136 @@ async def initiate_oauth(
     }
 
 
-@router.get("/oauth/callback")
-async def oauth_callback(
-    session_id: Optional[str] = Query(None),
+@router.get("/google/callback")
+async def google_oauth_callback(
+    code: Optional[str] = Query(None),
     state: Optional[str] = Query(None),
-    error: Optional[str] = Query(None)
+    error: Optional[str] = Query(None),
+    error_description: Optional[str] = Query(None)
 ):
     """
-    OAuth callback from Emergent Auth.
-    Exchanges session_id for tokens and stores them.
+    Google OAuth callback - exchanges authorization code for tokens.
+    This is the redirect URI registered with Google Cloud Console.
     """
     if error:
-        raise HTTPException(status_code=400, detail=f"OAuth error: {error}")
-    
-    if not session_id:
-        raise HTTPException(status_code=400, detail="Missing session_id")
-    
-    # Get session data from Emergent Auth
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            EMERGENT_AUTH_URL,
-            headers={"X-Session-ID": session_id}
+        logger.error(f"Google OAuth error: {error} - {error_description}")
+        # Redirect to frontend with error
+        return RedirectResponse(
+            url=f"https://impl-framework.preview.emergentagent.com/integrations?error={error}"
         )
-        
-        if response.status_code != 200:
-            logger.error(f"Failed to get session data: {response.status_code} - {response.text}")
-            raise HTTPException(status_code=400, detail="Failed to get session data")
-        
-        session_data = response.json()
-        logger.info(f"Emergent Auth session data keys: {list(session_data.keys())}")
     
-    # The session_data should contain Google OAuth access_token
-    # Try multiple possible field names
-    access_token = (
-        session_data.get("access_token") or 
-        session_data.get("token") or 
-        session_data.get("session_token") or
-        session_data.get("google_access_token") or
-        ""
-    )
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code")
     
-    if not access_token:
-        logger.error(f"No access token found in session data. Available fields: {list(session_data.keys())}")
-    
-    # Store them for the user
     tokens = get_integration_tokens_collection()
     
     # Look up the pending OAuth state
     pending = None
     if state:
         pending = await tokens.find_one({"state_id": state}, {"_id": 0})
+        if not pending:
+            logger.warning(f"OAuth state not found: {state}")
     
-    user_id = pending["user_id"] if pending else session_data.get("id")
+    if not pending:
+        return RedirectResponse(
+            url="https://impl-framework.preview.emergentagent.com/integrations?error=invalid_state"
+        )
     
-    # Store or update the integration token - save access_token for API calls
+    user_id = pending["user_id"]
+    original_redirect = pending.get("redirect_uri", "https://impl-framework.preview.emergentagent.com/integrations")
+    
+    # Exchange authorization code for tokens
+    try:
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                GOOGLE_TOKEN_URL,
+                data={
+                    "code": code,
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "redirect_uri": GOOGLE_REDIRECT_URI,
+                    "grant_type": "authorization_code"
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+            
+            if token_response.status_code != 200:
+                logger.error(f"Token exchange failed: {token_response.status_code} - {token_response.text}")
+                return RedirectResponse(
+                    url=f"{original_redirect}?error=token_exchange_failed"
+                )
+            
+            token_data = token_response.json()
+            logger.info(f"Google token exchange successful. Keys: {list(token_data.keys())}")
+            
+            access_token = token_data.get("access_token")
+            refresh_token = token_data.get("refresh_token")
+            expires_in = token_data.get("expires_in", 3600)
+            
+            # Get user info from Google
+            userinfo_response = await client.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            
+            user_info = {}
+            if userinfo_response.status_code == 200:
+                user_info = userinfo_response.json()
+                logger.info(f"Got Google user info: {user_info.get('email')}")
+    
+    except Exception as e:
+        logger.error(f"Token exchange error: {e}")
+        return RedirectResponse(
+            url=f"{original_redirect}?error=token_exchange_error"
+        )
+    
+    # Store the tokens
     token_doc = {
         "user_id": user_id,
         "provider": "google_classroom",
-        "access_token": access_token,  # This is what we need for Google API calls
-        "session_token": session_data.get("session_token"),  # Keep for reference
-        "session_id": session_id,  # Emergent session ID
-        "email": session_data.get("email"),
-        "name": session_data.get("name"),
-        "picture": session_data.get("picture"),
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_expires_at": (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat(),
+        "email": user_info.get("email"),
+        "name": user_info.get("name"),
+        "picture": user_info.get("picture"),
         "connected_at": datetime.now(timezone.utc).isoformat(),
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()  # Refresh token valid longer
     }
     
+    # Upsert - update if exists, insert if not
     await tokens.update_one(
         {"user_id": user_id, "provider": "google_classroom"},
         {"$set": token_doc},
         upsert=True
     )
     
-    # If there's a class_id, update that class's integration
-    if pending and pending.get("class_id"):
-        classes = get_classes_collection()
-        await classes.update_one(
-            {"id": pending["class_id"]},
-            {
-                "$set": {
-                    "integration.provider": "google_classroom",
-                    "integration.sync_enabled": True,
-                    "integration.sync_status": "connected",
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }
-            }
-        )
+    # Clean up the pending state
+    await tokens.delete_one({"state_id": state})
     
-    # Clean up pending state
-    if state:
-        await tokens.delete_one({"state_id": state})
+    logger.info(f"Google Classroom connected for user {user_id} ({user_info.get('email')})")
     
-    # Redirect back to the app
-    redirect_uri = pending.get("redirect_uri", "/dashboard") if pending else "/dashboard"
-    return RedirectResponse(url=f"{redirect_uri}?integration=connected")
+    # Redirect to the Google Courses page
+    return RedirectResponse(
+        url="https://impl-framework.preview.emergentagent.com/integrations/google_classroom/courses?connected=true"
+    )
+
+
+@router.get("/oauth/callback")
+async def oauth_callback_legacy(
+    session_id: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
+    error: Optional[str] = Query(None)
+):
+    """
+    Legacy OAuth callback from Emergent Auth (for backwards compatibility).
+    New integrations should use /google/callback directly.
+    """
+    if error:
+        raise HTTPException(status_code=400, detail=f"OAuth error: {error}")
+    
+    # Redirect to integrations page
+    return RedirectResponse(url="https://impl-framework.preview.emergentagent.com/integrations")
 
 
 @router.get("/status")
@@ -317,14 +386,66 @@ async def disconnect_integration(
     return {"success": True, "provider": provider}
 
 
-# ==================== Google Classroom Operations ====================
-
-@router.get("/google/courses")
-async def list_google_courses(
-    current_user: dict = Depends(get_current_user)
-):
+async def refresh_google_access_token(token_doc: dict) -> str:
     """
-    List courses from Google Classroom where user is a teacher.
+    Refresh a Google access token using the refresh token.
+    Returns the new access token.
+    """
+    refresh_token = token_doc.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            status_code=400,
+            detail="No refresh token available. Please reconnect Google Classroom."
+        )
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                GOOGLE_TOKEN_URL,
+                data={
+                    "client_id": GOOGLE_CLIENT_ID,
+                    "client_secret": GOOGLE_CLIENT_SECRET,
+                    "refresh_token": refresh_token,
+                    "grant_type": "refresh_token"
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Failed to refresh Google token. Please reconnect."
+                )
+            
+            token_data = response.json()
+            new_access_token = token_data.get("access_token")
+            expires_in = token_data.get("expires_in", 3600)
+            
+            # Update the stored token
+            tokens = get_integration_tokens_collection()
+            await tokens.update_one(
+                {"user_id": token_doc["user_id"], "provider": "google_classroom"},
+                {
+                    "$set": {
+                        "access_token": new_access_token,
+                        "token_expires_at": (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
+                    }
+                }
+            )
+            
+            logger.info(f"Refreshed Google access token for user {token_doc['user_id']}")
+            return new_access_token
+            
+    except httpx.RequestError as e:
+        logger.error(f"Token refresh request error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to refresh token")
+
+
+async def get_valid_google_token(current_user: dict) -> str:
+    """
+    Get a valid Google access token for the current user.
+    Refreshes if expired.
     """
     tokens = get_integration_tokens_collection()
     token_doc = await tokens.find_one(
@@ -338,15 +459,47 @@ async def list_google_courses(
             detail="Google Classroom not connected. Please connect first."
         )
     
-    # Use the access_token (or fall back to session_token for backwards compatibility)
-    access_token = token_doc.get("access_token") or token_doc.get("session_token", "")
+    access_token = token_doc.get("access_token")
     
     if not access_token:
-        logger.error(f"No access token found for user. Token doc keys: {list(token_doc.keys())}")
         raise HTTPException(
             status_code=400,
-            detail="Google Classroom token expired. Please reconnect."
+            detail="Google Classroom token missing. Please reconnect."
         )
+    
+    # Check if token is expired
+    token_expires_at = token_doc.get("token_expires_at")
+    if token_expires_at:
+        try:
+            if isinstance(token_expires_at, str):
+                expires_at = datetime.fromisoformat(token_expires_at.replace('Z', '+00:00'))
+            else:
+                expires_at = token_expires_at
+            
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            
+            # Refresh if within 5 minutes of expiry
+            if expires_at < datetime.now(timezone.utc) + timedelta(minutes=5):
+                logger.info(f"Access token expiring soon, refreshing...")
+                access_token = await refresh_google_access_token(token_doc)
+        except Exception as e:
+            logger.warning(f"Could not parse token expiry: {e}")
+    
+    return access_token
+
+
+# ==================== Google Classroom Operations ====================
+
+@router.get("/google/courses")
+async def list_google_courses(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    List courses from Google Classroom where user is a teacher.
+    """
+    # Get a valid access token (refreshes if needed)
+    access_token = await get_valid_google_token(current_user)
     
     service = get_google_classroom_service(access_token)
     
@@ -370,16 +523,8 @@ async def import_google_class(
     Import a Google Classroom course as a GameCraft class.
     Creates the class and imports all students.
     """
-    tokens = get_integration_tokens_collection()
-    token_doc = await tokens.find_one(
-        {"user_id": current_user["id"], "provider": "google_classroom"},
-        {"_id": 0}
-    )
-    
-    if not token_doc:
-        raise HTTPException(status_code=400, detail="Google Classroom not connected")
-    
-    access_token = token_doc.get("access_token") or token_doc.get("session_token", "")
+    # Get valid access token
+    access_token = await get_valid_google_token(current_user)
     service = get_google_classroom_service(access_token)
     
     # Get course details
@@ -478,16 +623,8 @@ async def sync_google_roster(
     if not external_id:
         raise HTTPException(status_code=400, detail="External course ID not set")
     
-    # Get token
-    token_doc = await tokens.find_one(
-        {"user_id": current_user["id"], "provider": "google_classroom"},
-        {"_id": 0}
-    )
-    
-    if not token_doc:
-        raise HTTPException(status_code=400, detail="Google Classroom not connected")
-    
-    access_token = token_doc.get("access_token") or token_doc.get("session_token", "")
+    # Get valid access token
+    access_token = await get_valid_google_token(current_user)
     service = get_google_classroom_service(access_token)
     
     # Get students from Google Classroom
