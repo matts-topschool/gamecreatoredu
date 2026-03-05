@@ -631,29 +631,34 @@ async def get_my_library(
         {"_id": 0, "game_id": 1}
     )
     
-    game_ids = []
+    purchased_game_ids = []
     async for p in purchase_cursor:
-        game_ids.append(p["game_id"])
+        purchased_game_ids.append(p["game_id"])
     
     # Also include user's own games
     own_cursor = games.find(
         {"owner_id": current_user["id"]},
         {"_id": 0, "id": 1}
     )
+    own_game_ids = []
     async for g in own_cursor:
-        if g["id"] not in game_ids:
-            game_ids.append(g["id"])
+        own_game_ids.append(g["id"])
+    
+    # Combine all game IDs (no duplicates)
+    all_game_ids = list(set(purchased_game_ids + own_game_ids))
     
     # Get full game details
-    if not game_ids:
+    if not all_game_ids:
         return {"library": []}
     
-    cursor = games.find({"id": {"$in": game_ids}}, {"_id": 0})
+    cursor = games.find({"id": {"$in": all_game_ids}}, {"_id": 0})
     
     library = []
     async for doc in cursor:
         creator = await users.find_one({"id": doc["owner_id"]}, {"_id": 0, "display_name": 1})
         listing = build_listing_from_game(doc, creator)
+        # Add flag to indicate if user owns this game
+        listing.is_mine = (doc["owner_id"] == current_user["id"])
         library.append(listing)
     
     return {"library": library}

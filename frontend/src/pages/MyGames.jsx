@@ -355,15 +355,46 @@ const MyGames = () => {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [gameToAssign, setGameToAssign] = useState(null);
   
-  // For saved and purchased games (would come from API)
+  // For saved (free acquired) and purchased (paid) games
   const [savedGames, setSavedGames] = useState([]);
   const [purchasedGames, setPurchasedGames] = useState([]);
+  const [libraryLoading, setLibraryLoading] = useState(true);
+
+  // Fetch library (acquired games from marketplace)
+  const fetchLibrary = async () => {
+    setLibraryLoading(true);
+    try {
+      const response = await api.get('/marketplace/my-library');
+      const library = response.data.library || [];
+      
+      // Separate into saved (free) and purchased (paid)
+      // Also exclude games the user created (those show in "Created" tab)
+      const saved = [];
+      const purchased = [];
+      
+      library.forEach(game => {
+        // Skip games the user owns (created) - they're already in the Created tab
+        if (game.is_mine) return;
+        
+        if (game.price_cents > 0) {
+          purchased.push(game);
+        } else {
+          saved.push(game);
+        }
+      });
+      
+      setSavedGames(saved);
+      setPurchasedGames(purchased);
+    } catch (err) {
+      console.error('Failed to load library:', err);
+    } finally {
+      setLibraryLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchGames();
-    // TODO: Fetch saved and purchased games from API
-    // fetchSavedGames();
-    // fetchPurchasedGames();
+    fetchLibrary();
   }, [fetchGames]);
 
   // Filter and sort games
@@ -591,7 +622,7 @@ const MyGames = () => {
         </div>
 
         {/* Loading State */}
-        {isLoading && (
+        {(isLoading || libraryLoading) && (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <div 
@@ -603,7 +634,7 @@ const MyGames = () => {
         )}
 
         {/* Tab Content */}
-        {!isLoading && (
+        {!isLoading && !libraryLoading && (
           <>
             <TabsContent value="created" className="mt-0">
               {renderGameGrid(filteredCreated, 'created')}
