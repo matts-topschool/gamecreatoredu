@@ -725,6 +725,12 @@ const StudioEditor = () => {
                   onThemeChange={(theme) => updateSpec('battle_visuals.theme', theme)}
                   onCharacterChange={(char) => updateSpec('battle_visuals.playerCharacter', char)}
                   onEnemyChange={(enemy) => updateSpec('battle_visuals.enemyType', enemy)}
+                  battleRounds={currentSpec?.battle_config?.rounds || 10}
+                  onBattleRoundsChange={(rounds) => updateSpec('battle_config.rounds', rounds)}
+                  timerPerRound={currentSpec?.battle_config?.timer_per_round || 30}
+                  onTimerPerRoundChange={(timer) => updateSpec('battle_config.timer_per_round', timer)}
+                  damagePerCorrect={currentSpec?.battle_config?.damage_per_correct || 25}
+                  onDamagePerCorrectChange={(damage) => updateSpec('battle_config.damage_per_correct', damage)}
                   gameType="battle"
                 />
               ) : currentSpec?.meta?.game_type === 'adventure' ? (

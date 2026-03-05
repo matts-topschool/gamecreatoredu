@@ -1,5 +1,5 @@
 /**
- * Theme Selector Component - Allows users to choose game themes, characters, and enemies
+ * Theme Selector Component - Allows users to choose game themes, characters, enemies AND battle settings
  */
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -10,11 +10,17 @@ import {
   Lock, 
   Check,
   Sparkles,
-  Crown
+  Crown,
+  Settings,
+  Swords,
+  Timer,
+  Heart,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   THEMES,
   PLAYER_CHARACTERS,
@@ -202,11 +208,20 @@ const ThemeSelector = ({
   onThemeChange,
   onCharacterChange,
   onEnemyChange,
+  // Battle configuration props
+  battleRounds = 10,
+  onBattleRoundsChange,
+  timerPerRound = 30,
+  onTimerPerRoundChange,
+  damagePerCorrect = 25,
+  onDamagePerCorrectChange,
+  playerHealth = 100,
+  onPlayerHealthChange,
   isPremiumUser = false,
   gameType = 'battle'
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
-  const [activeTab, setActiveTab] = useState('theme');
+  const [activeTab, setActiveTab] = useState('settings');
   
   // Get filtered themes based on category
   const filteredThemes = useMemo(() => {
@@ -233,20 +248,27 @@ const ThemeSelector = ({
     );
   }, [themeCategory]);
 
+  // Calculate estimated duration
+  const estimatedDuration = Math.ceil((battleRounds * timerPerRound) / 60);
+
   return (
     <div className="bg-slate-900/80 rounded-2xl p-6 border border-slate-700">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-yellow-400" />
-          <h3 className="text-lg font-semibold text-white">Customize Battle</h3>
+          <Swords className="w-5 h-5 text-red-400" />
+          <h3 className="text-lg font-semibold text-white">Battle Configuration</h3>
         </div>
         <div className="text-xs text-slate-400">
-          {CATALOG_STATS.freeThemes} free themes • {CATALOG_STATS.freeCharacters} free heroes • {CATALOG_STATS.freeEnemies} free enemies
+          {CATALOG_STATS.freeThemes} themes • {CATALOG_STATS.freeCharacters} heroes • {CATALOG_STATS.freeEnemies} enemies
         </div>
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-slate-800 mb-4">
+          <TabsTrigger value="settings" className="data-[state=active]:bg-emerald-600">
+            <Settings className="w-4 h-4 mr-2" />
+            Settings
+          </TabsTrigger>
           <TabsTrigger value="theme" className="data-[state=active]:bg-violet-600">
             <Palette className="w-4 h-4 mr-2" />
             Arena
@@ -260,6 +282,112 @@ const ThemeSelector = ({
             Enemy
           </TabsTrigger>
         </TabsList>
+
+        {/* Battle Settings */}
+        <TabsContent value="settings" className="space-y-4">
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardContent className="p-4 space-y-5">
+              {/* Battle Rounds */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                    <Swords className="w-4 h-4 text-orange-400" />
+                    Battle Rounds
+                  </label>
+                  <span className="text-sm font-mono text-amber-400">{battleRounds} rounds</span>
+                </div>
+                <div className="flex gap-2">
+                  {[5, 10, 15, 20, 25].map(val => (
+                    <button
+                      key={val}
+                      onClick={() => onBattleRoundsChange?.(val)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all
+                        ${battleRounds === val 
+                          ? 'bg-amber-500 text-white' 
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                    >
+                      {val}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">Each round = 1 question to answer</p>
+              </div>
+
+              {/* Timer Per Round */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                    <Timer className="w-4 h-4 text-cyan-400" />
+                    Time Per Round
+                  </label>
+                  <span className="text-sm font-mono text-cyan-400">{timerPerRound}s</span>
+                </div>
+                <div className="flex gap-2">
+                  {[15, 30, 45, 60, 90].map(val => (
+                    <button
+                      key={val}
+                      onClick={() => onTimerPerRoundChange?.(val)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all
+                        ${timerPerRound === val 
+                          ? 'bg-cyan-500 text-white' 
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                    >
+                      {val}s
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">Faster = more challenging</p>
+              </div>
+
+              {/* Damage Per Correct */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-yellow-400" />
+                    Damage Per Hit
+                  </label>
+                  <span className="text-sm font-mono text-yellow-400">{damagePerCorrect} DMG</span>
+                </div>
+                <div className="flex gap-2">
+                  {[10, 20, 25, 33, 50].map(val => (
+                    <button
+                      key={val}
+                      onClick={() => onDamagePerCorrectChange?.(val)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all
+                        ${damagePerCorrect === val 
+                          ? 'bg-yellow-500 text-black' 
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                    >
+                      {val}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-500">Damage dealt to enemy on correct answer</p>
+              </div>
+
+              {/* Summary Box */}
+              <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-slate-800 to-slate-700 border border-slate-600">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-xs text-slate-400">Total Questions</p>
+                    <p className="text-xl font-bold text-white">{battleRounds}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Est. Duration</p>
+                    <p className="text-xl font-bold text-white">~{estimatedDuration} min</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Hits to Win</p>
+                    <p className="text-xl font-bold text-white">{Math.ceil(100 / damagePerCorrect)}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
         
         {/* Theme Selection */}
         <TabsContent value="theme" className="space-y-4">

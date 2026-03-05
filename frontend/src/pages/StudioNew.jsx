@@ -132,11 +132,19 @@ const StudioNew = () => {
   const [selectedCharacter, setSelectedCharacter] = useState('knight');
   const [selectedEnemy, setSelectedEnemy] = useState('orc');
   const [showLivePreview, setShowLivePreview] = useState(false);
+  
+  // Battle configuration state
+  const [battleRounds, setBattleRounds] = useState(10);
+  const [timerPerRound, setTimerPerRound] = useState(30);
+  const [damagePerCorrect, setDamagePerCorrect] = useState(25);
 
   // Adventure customization state
   const [selectedWorld, setSelectedWorld] = useState('pirate_voyage');
   const [adventureSceneCount, setAdventureSceneCount] = useState(5);
   const [adventureQuestionsPerScene, setAdventureQuestionsPerScene] = useState(2);
+  
+  // Determine if using game-type-specific config (hides generic sliders)
+  const hasGameTypeConfig = gameType === 'battle' || gameType === 'adventure';
 
   // Poll for compilation status
   const pollForCompletion = async (taskId, maxAttempts = 60) => {
@@ -179,14 +187,26 @@ const StudioNew = () => {
     try {
       const gradeNum = gradeLevel ? parseInt(gradeLevel) : null;
       
+      // Calculate question count based on game type
+      let effectiveQuestionCount = questionCount[0];
+      let effectiveDuration = duration[0];
+      
+      if (gameType === 'battle') {
+        effectiveQuestionCount = battleRounds;
+        effectiveDuration = Math.ceil((battleRounds * timerPerRound) / 60);
+      } else if (gameType === 'adventure') {
+        effectiveQuestionCount = adventureSceneCount * adventureQuestionsPerScene;
+        effectiveDuration = Math.ceil(effectiveQuestionCount * 1.5); // ~1.5 min per adventure question
+      }
+      
       // Start the compilation task
       const startResponse = await api.post('/ai/compile/start', {
         prompt: prompt,
         grade_levels: gradeNum ? [gradeNum] : null,
         subjects: subject ? [subject] : null,
         game_type: gameType || null,
-        question_count: questionCount[0],
-        duration_minutes: duration[0]
+        question_count: effectiveQuestionCount,
+        duration_minutes: effectiveDuration
       });
 
       const taskId = startResponse.data.task_id;
@@ -237,13 +257,18 @@ const StudioNew = () => {
       const gradeNum = gradeLevel ? parseInt(gradeLevel) : null;
       const specGameType = compiledSpec.meta?.game_type || gameType;
       
-      // Add battle visuals to spec if it's a battle game
+      // Add game-type specific config to spec
       const specWithVisuals = {
         ...compiledSpec,
         battle_visuals: (specGameType === 'battle') ? {
           theme: selectedTheme,
           playerCharacter: selectedCharacter,
           enemyType: selectedEnemy
+        } : undefined,
+        battle_config: (specGameType === 'battle') ? {
+          rounds: battleRounds,
+          timer_per_round: timerPerRound,
+          damage_per_correct: damagePerCorrect
         } : undefined,
         adventure_visuals: (specGameType === 'adventure') ? {
           world: selectedWorld,
@@ -403,42 +428,56 @@ const StudioNew = () => {
                     </div>
                   </div>
 
-                  <div className="grid sm:grid-cols-2 gap-6">
-                    <div>
-                      <Label className="flex items-center justify-between mb-3">
-                        <span>Number of Questions</span>
-                        <span className="font-mono text-sm text-muted-foreground">{questionCount[0]}</span>
-                      </Label>
-                      <Slider
-                        value={questionCount}
-                        onValueChange={setQuestionCount}
-                        min={5}
-                        max={30}
-                        step={5}
-                        className="py-2"
-                        data-testid="question-slider"
-                      />
-                    </div>
+                  {/* Generic Question/Duration sliders - only show for Quiz and other non-configured game types */}
+                  {!hasGameTypeConfig && (
+                    <div className="grid sm:grid-cols-2 gap-6">
+                      <div>
+                        <Label className="flex items-center justify-between mb-3">
+                          <span>Number of Questions</span>
+                          <span className="font-mono text-sm text-muted-foreground">{questionCount[0]}</span>
+                        </Label>
+                        <Slider
+                          value={questionCount}
+                          onValueChange={setQuestionCount}
+                          min={5}
+                          max={30}
+                          step={5}
+                          className="py-2"
+                          data-testid="question-slider"
+                        />
+                      </div>
 
-                    <div>
-                      <Label className="flex items-center justify-between mb-3">
-                        <span className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          Duration
-                        </span>
-                        <span className="font-mono text-sm text-muted-foreground">{duration[0]} min</span>
-                      </Label>
-                      <Slider
-                        value={duration}
-                        onValueChange={setDuration}
-                        min={5}
-                        max={60}
-                        step={5}
-                        className="py-2"
-                        data-testid="duration-slider"
-                      />
+                      <div>
+                        <Label className="flex items-center justify-between mb-3">
+                          <span className="flex items-center gap-2">
+                            <Clock className="w-4 h-4" />
+                            Duration
+                          </span>
+                          <span className="font-mono text-sm text-muted-foreground">{duration[0]} min</span>
+                        </Label>
+                        <Slider
+                          value={duration}
+                          onValueChange={setDuration}
+                          min={5}
+                          max={60}
+                          step={5}
+                          className="py-2"
+                          data-testid="duration-slider"
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Game-type specific configuration notice */}
+                  {hasGameTypeConfig && (
+                    <div className="p-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+                      <p className="text-sm text-amber-600 dark:text-amber-400">
+                        {gameType === 'battle' 
+                          ? '⚔️ Battle settings (rounds, timer, damage) are configured in the preview tab after generating.'
+                          : '🗺️ Adventure settings (scenes, questions per scene) are configured in the preview tab after generating.'}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -553,6 +592,12 @@ const StudioNew = () => {
                   onThemeChange={setSelectedTheme}
                   onCharacterChange={setSelectedCharacter}
                   onEnemyChange={setSelectedEnemy}
+                  battleRounds={battleRounds}
+                  onBattleRoundsChange={setBattleRounds}
+                  timerPerRound={timerPerRound}
+                  onTimerPerRoundChange={setTimerPerRound}
+                  damagePerCorrect={damagePerCorrect}
+                  onDamagePerCorrectChange={setDamagePerCorrect}
                   gameType="battle"
                 />
               )}
