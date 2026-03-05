@@ -27,6 +27,7 @@ import CreatorStore from "@/pages/CreatorStore";
 import Integrations from "@/pages/Integrations";
 import GoogleCourses from "@/pages/GoogleCourses";
 import FileImport from "@/pages/FileImport";
+import MyGames from "@/pages/MyGames";
 
 // Placeholder pages for Phase 1
 const Placeholder = ({ title }) => (
@@ -37,7 +38,6 @@ const Placeholder = ({ title }) => (
     </div>
   </div>
 );
-const DashboardGames = () => <Placeholder title="My Games" />;
 const DashboardSessions = () => <Placeholder title="Sessions" />;
 const DashboardAnalytics = () => <Placeholder title="Analytics" />;
 const MarketplacePurchases = () => <Placeholder title="My Purchases" />;
@@ -73,7 +73,7 @@ function App() {
           >
             {/* Dashboard */}
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/games" element={<DashboardGames />} />
+            <Route path="/dashboard/games" element={<MyGames />} />
             <Route path="/dashboard/sessions" element={<DashboardSessions />} />
             <Route path="/dashboard/sessions/:id" element={<Placeholder title="Session Detail" />} />
             <Route path="/dashboard/classes" element={<Classes />} />
