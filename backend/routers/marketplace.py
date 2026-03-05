@@ -657,9 +657,10 @@ async def get_my_library(
     async for doc in cursor:
         creator = await users.find_one({"id": doc["owner_id"]}, {"_id": 0, "display_name": 1})
         listing = build_listing_from_game(doc, creator)
-        # Add flag to indicate if user owns this game
-        listing.is_mine = (doc["owner_id"] == current_user["id"])
-        library.append(listing)
+        # Convert to dict, add is_mine flag, then back to model
+        listing_dict = listing.model_dump()
+        listing_dict["is_mine"] = (doc["owner_id"] == current_user["id"])
+        library.append(MarketplaceListing(**listing_dict))
     
     return {"library": library}
 

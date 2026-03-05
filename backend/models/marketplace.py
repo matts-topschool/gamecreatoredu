@@ -199,6 +199,9 @@ class MarketplaceListing(BaseModel):
     # Timestamps
     published_at: Optional[datetime] = None
     created_at: datetime
+    
+    # Library state (for my-library endpoint)
+    is_mine: bool = False  # True if user owns/created this game
 
 
 class MarketplaceListingCreate(BaseModel):
