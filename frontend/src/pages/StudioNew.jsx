@@ -123,7 +123,34 @@ const StudioNew = () => {
   const [compilationError, setCompilationError] = useState(null);
   const [activeTab, setActiveTab] = useState('prompt');
 
-  // Compile game using AI
+  // Poll for compilation status
+  const pollForCompletion = async (taskId, maxAttempts = 60) => {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await api.get(`/ai/compile/status/${taskId}`);
+        const data = response.data;
+        
+        if (data.status === 'completed' && data.spec) {
+          return { success: true, spec: data.spec };
+        } else if (data.status === 'failed') {
+          return { success: false, error: data.error || 'Compilation failed' };
+        }
+        
+        // Still processing, wait and retry
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Poll every 2 seconds
+      } catch (error) {
+        console.error('Poll error:', error);
+        // On 404 or other errors, wait and retry a couple times
+        if (attempt > 5) {
+          return { success: false, error: 'Failed to check compilation status' };
+        }
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    return { success: false, error: 'Compilation timed out. Please try again.' };
+  };
+
+  // Compile game using AI with async polling
   const handleCompile = async () => {
     if (!prompt.trim()) {
       toast.error('Please describe your game');
@@ -137,7 +164,8 @@ const StudioNew = () => {
     try {
       const gradeNum = gradeLevel ? parseInt(gradeLevel) : null;
       
-      const response = await api.post('/ai/compile', {
+      // Start the compilation task
+      const startResponse = await api.post('/ai/compile/start', {
         prompt: prompt,
         grade_levels: gradeNum ? [gradeNum] : null,
         subjects: subject ? [subject] : null,
@@ -146,19 +174,30 @@ const StudioNew = () => {
         duration_minutes: duration[0]
       });
 
-      if (response.data.success) {
-        setCompiledSpec(response.data.spec);
+      const taskId = startResponse.data.task_id;
+      
+      if (!taskId) {
+        throw new Error('Failed to start compilation');
+      }
+
+      toast.info('AI is generating your game. This may take 30-90 seconds...');
+      
+      // Poll for completion
+      const result = await pollForCompletion(taskId);
+      
+      if (result.success && result.spec) {
+        setCompiledSpec(result.spec);
         setActiveTab('preview');
         toast.success('Game compiled successfully!');
       } else {
-        throw new Error('Compilation failed');
+        throw new Error(result.error || 'Compilation failed');
       }
     } catch (error) {
       console.error('Compilation error:', error);
       let message = 'Failed to compile game';
       
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        message = 'Request timed out. AI generation can take 30-90 seconds for complex games. Please try again.';
+        message = 'Request timed out. Please try again.';
       } else if (error.response?.data?.detail) {
         message = error.response.data.detail;
       } else if (error.message) {
