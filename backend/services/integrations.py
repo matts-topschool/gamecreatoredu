@@ -381,48 +381,172 @@ def get_integration_provider(provider_name: str) -> Optional[IntegrationProvider
 
 # List of supported providers
 SUPPORTED_PROVIDERS = [
+    # === US & Global Providers ===
     {
         "id": "google_classroom",
         "name": "Google Classroom",
         "description": "Sync classes and students from Google Classroom",
         "features": ["roster_sync", "assignment_creation", "grade_submission"],
-        "requires_oauth": True
+        "requires_oauth": True,
+        "region": "global",
+        "category": "lms"
     },
     {
         "id": "canvas",
         "name": "Canvas LMS",
-        "description": "Integrate with Canvas LMS",
+        "description": "Integrate with Instructure Canvas LMS",
         "features": ["roster_sync", "assignment_creation", "grade_submission"],
         "requires_oauth": False,
-        "requires_api_token": True
+        "requires_api_token": True,
+        "region": "global",
+        "category": "lms"
     },
     {
         "id": "clever",
         "name": "Clever",
         "description": "SSO and roster sync via Clever",
         "features": ["roster_sync", "sso"],
-        "requires_oauth": True
+        "requires_oauth": True,
+        "region": "us",
+        "category": "sis"
     },
     {
         "id": "classlink",
         "name": "ClassLink",
-        "description": "SSO and roster sync via ClassLink",
+        "description": "SSO and roster sync via ClassLink OneRoster",
         "features": ["roster_sync", "sso"],
         "requires_oauth": True,
-        "coming_soon": True
+        "coming_soon": True,
+        "region": "us",
+        "category": "sis"
     },
     {
         "id": "powerschool",
         "name": "PowerSchool",
         "description": "Integrate with PowerSchool SIS",
         "features": ["roster_sync", "grade_submission"],
-        "coming_soon": True
+        "coming_soon": True,
+        "region": "us",
+        "category": "sis"
     },
     {
         "id": "schoology",
         "name": "Schoology",
-        "description": "Integrate with Schoology LMS",
+        "description": "Integrate with Schoology LMS (PowerSchool)",
         "features": ["roster_sync", "assignment_creation", "grade_submission"],
-        "coming_soon": True
+        "coming_soon": True,
+        "region": "us",
+        "category": "lms"
+    },
+    {
+        "id": "alma",
+        "name": "Alma SIS",
+        "description": "Modern cloud-based Student Information System",
+        "features": ["roster_sync", "grade_submission", "parent_portal"],
+        "requires_api_token": True,
+        "region": "us",
+        "category": "sis"
+    },
+    # === UK Providers ===
+    {
+        "id": "arbor",
+        "name": "Arbor Education",
+        "description": "UK cloud-based MIS for schools and MATs",
+        "features": ["roster_sync", "grade_submission", "attendance", "ctf_import"],
+        "requires_api_token": True,
+        "region": "uk",
+        "category": "mis"
+    },
+    {
+        "id": "sims",
+        "name": "SIMS (Capita)",
+        "description": "UK's most widely used school management system",
+        "features": ["roster_sync", "grade_submission", "ctf_import", "ctf_export"],
+        "requires_api_token": True,
+        "region": "uk",
+        "category": "mis"
+    },
+    {
+        "id": "bromcom",
+        "name": "Bromcom MIS",
+        "description": "UK cloud MIS with integrated assessments",
+        "features": ["roster_sync", "grade_submission", "ctf_import"],
+        "requires_api_token": True,
+        "region": "uk",
+        "category": "mis"
+    },
+    {
+        "id": "scholarpack",
+        "name": "ScholarPack",
+        "description": "UK primary school MIS with CTF support",
+        "features": ["roster_sync", "ctf_import", "ctf_export"],
+        "requires_api_token": True,
+        "region": "uk",
+        "category": "mis"
+    },
+    {
+        "id": "isams",
+        "name": "iSAMS",
+        "description": "School management for UK independent schools",
+        "features": ["roster_sync", "grade_submission", "parent_portal"],
+        "requires_api_token": True,
+        "region": "uk",
+        "category": "mis"
+    },
+    {
+        "id": "groupcall",
+        "name": "Groupcall Xporter",
+        "description": "UK data integration and sync platform",
+        "features": ["roster_sync", "data_sync", "wonde_compatible"],
+        "requires_api_token": True,
+        "region": "uk",
+        "category": "integration"
+    },
+    {
+        "id": "wonde",
+        "name": "Wonde",
+        "description": "UK schools data platform - connects to any MIS",
+        "features": ["roster_sync", "universal_connector", "real_time_sync"],
+        "requires_api_token": True,
+        "region": "uk",
+        "category": "integration"
+    },
+    # === File Import ===
+    {
+        "id": "ctf_import",
+        "name": "CTF File Import",
+        "description": "Import UK Common Transfer File (.ctf/.xml) directly",
+        "features": ["file_import", "roster_sync", "bulk_import"],
+        "requires_oauth": False,
+        "requires_api_token": False,
+        "region": "uk",
+        "category": "file_import"
+    },
+    {
+        "id": "csv_import",
+        "name": "CSV/Excel Import",
+        "description": "Import students from CSV or Excel files",
+        "features": ["file_import", "roster_sync", "bulk_import"],
+        "requires_oauth": False,
+        "requires_api_token": False,
+        "region": "global",
+        "category": "file_import"
     }
 ]
+
+
+# Provider categories for UI grouping
+PROVIDER_CATEGORIES = {
+    "lms": {"name": "Learning Management Systems", "description": "Full LMS platforms"},
+    "sis": {"name": "Student Information Systems", "description": "Student data and grades"},
+    "mis": {"name": "Management Information Systems", "description": "UK school management"},
+    "integration": {"name": "Integration Platforms", "description": "Connect multiple systems"},
+    "file_import": {"name": "File Import", "description": "Import from files"}
+}
+
+# Region labels
+REGIONS = {
+    "global": "Global",
+    "us": "United States",
+    "uk": "United Kingdom"
+}

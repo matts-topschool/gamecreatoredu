@@ -1,7 +1,7 @@
 """
-Integrations Router - LMS/SIS OAuth flow, roster sync, and grade sync.
+Integrations Router - LMS/SIS OAuth flow, roster sync, grade sync, and file imports.
 """
-from fastapi import APIRouter, HTTPException, status, Depends, Query, Request, Response
+from fastapi import APIRouter, HTTPException, status, Depends, Query, Request, Response, UploadFile, File, Form
 from fastapi.responses import RedirectResponse
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
@@ -28,8 +28,9 @@ from models.assignment import (
     StudentAttempt,
     GradeMetric
 )
-from services.integrations import SUPPORTED_PROVIDERS, GradeSubmission
+from services.integrations import SUPPORTED_PROVIDERS, PROVIDER_CATEGORIES, REGIONS, GradeSubmission
 from services.google_classroom import GoogleClassroomService, get_google_classroom_service
+from services.ctf_parser import parse_ctf_file, parse_csv_students, STANDARD_CSV_MAPPINGS, CTFParseResult
 
 logger = logging.getLogger(__name__)
 
@@ -57,19 +58,35 @@ def get_integration_tokens_collection():
 # ==================== Provider List ====================
 
 @router.get("/providers")
-async def list_providers():
+async def list_providers(
+    region: Optional[str] = Query(None, description="Filter by region: global, us, uk"),
+    category: Optional[str] = Query(None, description="Filter by category: lms, sis, mis, integration, file_import")
+):
     """
     List all supported LMS/SIS integration providers.
     Returns which are available vs coming soon.
     """
+    providers = SUPPORTED_PROVIDERS
+    
+    # Filter by region
+    if region:
+        providers = [p for p in providers if p.get("region") == region or p.get("region") == "global"]
+    
+    # Filter by category
+    if category:
+        providers = [p for p in providers if p.get("category") == category]
+    
     return {
         "providers": [
             {
                 **p,
                 "available": not p.get("coming_soon", False)
             }
-            for p in SUPPORTED_PROVIDERS
-        ]
+            for p in providers
+        ],
+        "categories": PROVIDER_CATEGORIES,
+        "regions": REGIONS,
+        "total": len(providers)
     }
 
 
@@ -248,6 +265,8 @@ async def get_integration_status(
             "description": p.get("description", ""),
             "features": p.get("features", []),
             "coming_soon": p.get("coming_soon", False),
+            "region": p.get("region", "global"),
+            "category": p.get("category", "lms"),
             "connected": False
         }
         
@@ -256,7 +275,11 @@ async def get_integration_status(
         
         result.append(provider_status)
     
-    return {"providers": result}
+    return {
+        "providers": result,
+        "categories": PROVIDER_CATEGORIES,
+        "regions": REGIONS
+    }
 
 
 @router.delete("/disconnect/{provider}")
@@ -925,3 +948,335 @@ def assignment_with_attempts_from_db(doc: dict) -> AssignmentWithAttempts:
         **base.model_dump(),
         attempts=attempts
     )
+
+
+
+# ==================== File Import Endpoints ====================
+
+class FileImportPreview(BaseModel):
+    """Preview result from file parsing."""
+    success: bool
+    file_type: str  # ctf, csv
+    version: Optional[str] = None
+    source_school: Optional[Dict[str, str]] = None
+    students_found: int
+    students: List[Dict[str, Any]]  # First 10 for preview
+    errors: List[str]
+    warnings: List[str]
+    suggested_mapping: Optional[Dict[str, str]] = None
+
+
+@router.post("/import/preview")
+async def preview_file_import(
+    file: UploadFile = File(...),
+    file_type: str = Form("auto"),  # auto, ctf, csv
+    csv_format: Optional[str] = Form(None),  # sims, arbor, bromcom, generic
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Preview a file import without creating students.
+    Detects file type and parses student data for preview.
+    
+    Supports:
+    - CTF files (.ctf, .xml) - UK Common Transfer Format
+    - CSV files (.csv) - Various formats from different MIS
+    """
+    content = await file.read()
+    filename = file.filename or "upload"
+    
+    # Auto-detect file type
+    if file_type == "auto":
+        if filename.lower().endswith('.ctf') or filename.lower().endswith('.xml'):
+            # Check if it's CTF by looking for CTF-specific tags
+            content_preview = content[:2000].decode('utf-8', errors='ignore').lower()
+            if 'ctf' in content_preview or 'pupil' in content_preview or '<header>' in content_preview:
+                file_type = "ctf"
+            else:
+                file_type = "csv" if filename.lower().endswith('.csv') else "ctf"
+        elif filename.lower().endswith('.csv'):
+            file_type = "csv"
+        else:
+            file_type = "csv"  # Default to CSV
+    
+    result: CTFParseResult
+    suggested_mapping = None
+    
+    if file_type == "ctf":
+        result = parse_ctf_file(content, filename)
+    else:
+        # CSV parsing
+        mapping = STANDARD_CSV_MAPPINGS.get(csv_format, STANDARD_CSV_MAPPINGS["generic"])
+        result = parse_csv_students(content, mapping)
+        suggested_mapping = mapping
+    
+    # Convert students for preview (max 10)
+    preview_students = []
+    for student in result.students[:10]:
+        preview_students.append({
+            "forename": student.forename,
+            "surname": student.surname,
+            "email": student.email,
+            "upn": student.upn,
+            "year_group": student.year_group,
+            "registration_group": student.registration_group
+        })
+    
+    return FileImportPreview(
+        success=result.success,
+        file_type=file_type,
+        version=result.version,
+        source_school=result.source_school,
+        students_found=len(result.students),
+        students=preview_students,
+        errors=result.errors,
+        warnings=result.warnings[:10],  # Limit warnings
+        suggested_mapping=suggested_mapping
+    )
+
+
+class FileImportRequest(BaseModel):
+    """Request to import students from a file."""
+    class_id: str
+    year_group_filter: Optional[str] = None  # Only import specific year group
+    registration_group_filter: Optional[str] = None
+
+
+@router.post("/import/ctf/{class_id}")
+async def import_ctf_to_class(
+    class_id: str,
+    file: UploadFile = File(...),
+    year_group_filter: Optional[str] = Form(None),
+    registration_group_filter: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Import students from a CTF file into a class.
+    Creates StudentEnrollment records for each student.
+    """
+    classes = get_classes_collection()
+    
+    # Verify class ownership
+    class_doc = await classes.find_one(
+        {"id": class_id, "teacher_id": current_user["id"]},
+        {"_id": 0}
+    )
+    
+    if not class_doc:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    # Parse CTF file
+    content = await file.read()
+    result = parse_ctf_file(content, file.filename or "upload.ctf")
+    
+    if not result.success:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to parse CTF file: {', '.join(result.errors)}"
+        )
+    
+    # Filter students if requested
+    students_to_import = result.students
+    if year_group_filter:
+        students_to_import = [s for s in students_to_import if s.year_group == year_group_filter]
+    if registration_group_filter:
+        students_to_import = [s for s in students_to_import if s.registration_group == registration_group_filter]
+    
+    # Get existing student UPNs to avoid duplicates
+    existing_students = class_doc.get("students", [])
+    existing_upns = {s.get("external_id") for s in existing_students if s.get("external_id")}
+    existing_emails = {s.get("email") for s in existing_students if s.get("email")}
+    
+    # Create enrollments
+    added = 0
+    skipped = 0
+    
+    for ctf_student in students_to_import:
+        # Skip duplicates
+        if ctf_student.upn and ctf_student.upn in existing_upns:
+            skipped += 1
+            continue
+        if ctf_student.email and ctf_student.email in existing_emails:
+            skipped += 1
+            continue
+        
+        enrollment = StudentEnrollment(
+            display_name=f"{ctf_student.forename} {ctf_student.surname}",
+            email=ctf_student.email,
+            first_name=ctf_student.forename,
+            last_name=ctf_student.surname,
+            external_id=ctf_student.upn,
+            external_provider=IntProvider.OTHER,
+            metadata={
+                "year_group": ctf_student.year_group,
+                "registration_group": ctf_student.registration_group,
+                "imported_from": "ctf",
+                "import_date": datetime.now(timezone.utc).isoformat()
+            }
+        )
+        
+        await classes.update_one(
+            {"id": class_id},
+            {"$push": {"students": enrollment.model_dump()}}
+        )
+        added += 1
+        
+        # Track new UPN/email
+        if ctf_student.upn:
+            existing_upns.add(ctf_student.upn)
+        if ctf_student.email:
+            existing_emails.add(ctf_student.email)
+    
+    # Update student count
+    await classes.update_one(
+        {"id": class_id},
+        {
+            "$inc": {"student_count": added, "active_student_count": added},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    logger.info(f"Imported {added} students from CTF to class {class_id} (skipped {skipped} duplicates)")
+    
+    return {
+        "success": True,
+        "students_imported": added,
+        "students_skipped": skipped,
+        "total_in_file": len(result.students),
+        "source_school": result.source_school,
+        "ctf_version": result.version,
+        "warnings": result.warnings[:5]
+    }
+
+
+@router.post("/import/csv/{class_id}")
+async def import_csv_to_class(
+    class_id: str,
+    file: UploadFile = File(...),
+    format: str = Form("generic"),  # sims, arbor, bromcom, generic
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Import students from a CSV file into a class.
+    Supports various MIS export formats: SIMS, Arbor, Bromcom, or generic.
+    """
+    classes = get_classes_collection()
+    
+    # Verify class ownership
+    class_doc = await classes.find_one(
+        {"id": class_id, "teacher_id": current_user["id"]},
+        {"_id": 0}
+    )
+    
+    if not class_doc:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    # Get column mapping
+    mapping = STANDARD_CSV_MAPPINGS.get(format, STANDARD_CSV_MAPPINGS["generic"])
+    
+    # Parse CSV
+    content = await file.read()
+    result = parse_csv_students(content, mapping)
+    
+    if not result.success:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to parse CSV file: {', '.join(result.errors)}"
+        )
+    
+    # Get existing emails to avoid duplicates
+    existing_students = class_doc.get("students", [])
+    existing_emails = {s.get("email") for s in existing_students if s.get("email")}
+    existing_upns = {s.get("external_id") for s in existing_students if s.get("external_id")}
+    
+    # Create enrollments
+    added = 0
+    skipped = 0
+    
+    for csv_student in result.students:
+        # Skip duplicates
+        if csv_student.upn and csv_student.upn in existing_upns:
+            skipped += 1
+            continue
+        if csv_student.email and csv_student.email in existing_emails:
+            skipped += 1
+            continue
+        
+        enrollment = StudentEnrollment(
+            display_name=f"{csv_student.forename} {csv_student.surname}",
+            email=csv_student.email,
+            first_name=csv_student.forename,
+            last_name=csv_student.surname,
+            external_id=csv_student.upn,
+            external_provider=IntProvider.OTHER,
+            metadata={
+                "year_group": csv_student.year_group,
+                "registration_group": csv_student.registration_group,
+                "imported_from": f"csv_{format}",
+                "import_date": datetime.now(timezone.utc).isoformat()
+            }
+        )
+        
+        await classes.update_one(
+            {"id": class_id},
+            {"$push": {"students": enrollment.model_dump()}}
+        )
+        added += 1
+        
+        # Track
+        if csv_student.upn:
+            existing_upns.add(csv_student.upn)
+        if csv_student.email:
+            existing_emails.add(csv_student.email)
+    
+    # Update student count
+    await classes.update_one(
+        {"id": class_id},
+        {
+            "$inc": {"student_count": added, "active_student_count": added},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    logger.info(f"Imported {added} students from CSV ({format}) to class {class_id}")
+    
+    return {
+        "success": True,
+        "students_imported": added,
+        "students_skipped": skipped,
+        "total_in_file": len(result.students),
+        "format_used": format,
+        "warnings": result.warnings[:5]
+    }
+
+
+@router.get("/import/csv-formats")
+async def list_csv_formats():
+    """List available CSV format mappings."""
+    return {
+        "formats": [
+            {
+                "id": "sims",
+                "name": "SIMS",
+                "description": "Capita SIMS export format",
+                "columns": list(STANDARD_CSV_MAPPINGS["sims"].values())
+            },
+            {
+                "id": "arbor",
+                "name": "Arbor Education",
+                "description": "Arbor MIS export format",
+                "columns": list(STANDARD_CSV_MAPPINGS["arbor"].values())
+            },
+            {
+                "id": "bromcom",
+                "name": "Bromcom",
+                "description": "Bromcom MIS export format", 
+                "columns": list(STANDARD_CSV_MAPPINGS["bromcom"].values())
+            },
+            {
+                "id": "generic",
+                "name": "Generic",
+                "description": "Standard CSV with First Name, Last Name, Email columns",
+                "columns": list(STANDARD_CSV_MAPPINGS["generic"].values())
+            }
+        ]
+    }

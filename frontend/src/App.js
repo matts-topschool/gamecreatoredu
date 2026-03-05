@@ -25,6 +25,7 @@ import Marketplace from "@/pages/Marketplace";
 import MarketplaceListing from "@/pages/MarketplaceListing";
 import Integrations from "@/pages/Integrations";
 import GoogleCourses from "@/pages/GoogleCourses";
+import FileImport from "@/pages/FileImport";
 
 // Placeholder pages for Phase 1
 const Placeholder = ({ title }) => (
@@ -99,6 +100,7 @@ function App() {
             {/* Integrations */}
             <Route path="/integrations" element={<Integrations />} />
             <Route path="/integrations/google_classroom/courses" element={<GoogleCourses />} />
+            <Route path="/integrations/import" element={<FileImport />} />
           </Route>
 
           {/* Play Routes (semi-public) */}
