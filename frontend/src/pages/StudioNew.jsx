@@ -230,12 +230,22 @@ const StudioNew = () => {
     try {
       const gradeNum = gradeLevel ? parseInt(gradeLevel) : null;
       
+      // Add battle visuals to spec if it's a battle game
+      const specWithVisuals = {
+        ...compiledSpec,
+        battle_visuals: (compiledSpec.meta?.game_type === 'battle' || gameType === 'battle') ? {
+          theme: selectedTheme,
+          playerCharacter: selectedCharacter,
+          enemyType: selectedEnemy
+        } : undefined
+      };
+      
       const game = await createGame({
         title: compiledSpec.meta?.title || 'AI Generated Game',
         description: compiledSpec.meta?.description || prompt.slice(0, 200),
         grade_levels: gradeNum ? [gradeNum] : compiledSpec.meta?.educational?.grade_levels || [],
         subjects: subject ? [subject] : compiledSpec.meta?.educational?.subjects || [],
-        spec: compiledSpec
+        spec: specWithVisuals
       });
 
       if (game) {

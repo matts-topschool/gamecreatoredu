@@ -46,6 +46,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import useGameStore from '@/stores/gameStore';
+import GameThumbnail from '@/components/game/GameThumbnail';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -187,8 +188,8 @@ const Studio = () => {
                 data-testid={`game-card-${game.id}`}
               >
                 <Link to={`/studio/${game.id}`}>
-                  <div className="aspect-video bg-gradient-to-br from-violet-100 to-indigo-100 rounded-t-xl flex items-center justify-center relative">
-                    <Gamepad2 className="w-12 h-12 text-violet-300" />
+                  <div className="relative rounded-t-xl overflow-hidden">
+                    <GameThumbnail spec={game.spec} />
                     <Badge 
                       className={`absolute top-3 right-3 ${getStatusColor(game.status)}`}
                     >
@@ -257,8 +258,8 @@ const Studio = () => {
                 data-testid={`game-row-${game.id}`}
               >
                 <CardContent className="p-4 flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center flex-shrink-0">
-                    <Gamepad2 className="w-6 h-6 text-violet-400" />
+                  <div className="w-24 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                    <GameThumbnail spec={game.spec} className="w-full h-full" />
                   </div>
                   <Link to={`/studio/${game.id}`} className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">

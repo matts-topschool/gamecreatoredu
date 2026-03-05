@@ -63,6 +63,7 @@ import {
 import useGameStore from '@/stores/gameStore';
 import LivePreview from '@/components/studio/LivePreview';
 import PublishDialog from '@/components/studio/PublishDialog';
+import ThemeSelector from '@/game/ThemeSelector';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -657,10 +658,14 @@ const StudioEditor = () => {
         {/* Editor Panel */}
         <div className="lg:col-span-2 space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-4 w-full">
+            <TabsList className="grid grid-cols-5 w-full">
               <TabsTrigger value="questions" className="gap-2">
                 <HelpCircle className="w-4 h-4" />
                 Questions
+              </TabsTrigger>
+              <TabsTrigger value="visuals" className="gap-2">
+                <Gamepad2 className="w-4 h-4" />
+                Visuals
               </TabsTrigger>
               <TabsTrigger value="meta" className="gap-2">
                 <BookOpen className="w-4 h-4" />
@@ -707,6 +712,33 @@ const StudioEditor = () => {
                   ))}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Visuals Tab - Battle Game Customization */}
+            <TabsContent value="visuals" className="mt-4">
+              {currentSpec?.meta?.game_type === 'battle' ? (
+                <ThemeSelector
+                  selectedTheme={currentSpec?.battle_visuals?.theme || 'fantasy_castle'}
+                  selectedCharacter={currentSpec?.battle_visuals?.playerCharacter || 'knight'}
+                  selectedEnemy={currentSpec?.battle_visuals?.enemyType || 'orc'}
+                  onThemeChange={(theme) => updateSpec('battle_visuals.theme', theme)}
+                  onCharacterChange={(char) => updateSpec('battle_visuals.playerCharacter', char)}
+                  onEnemyChange={(enemy) => updateSpec('battle_visuals.enemyType', enemy)}
+                  gameType="battle"
+                />
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Gamepad2 className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                    <h3 className="text-lg font-semibold mb-2">Visual Customization</h3>
+                    <p className="text-muted-foreground max-w-md mx-auto">
+                      Visual customization is available for <strong>Monster Battle</strong> games. 
+                      Change the game type to "Monster Battle" in the Info tab to unlock arena themes, 
+                      hero characters, and enemy selection.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Meta Tab */}

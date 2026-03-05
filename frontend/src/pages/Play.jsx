@@ -210,6 +210,10 @@ const Play = () => {
               playerId={user?.id}
               playerName={user?.display_name || 'Player'}
               fallbackToQuiz={true}
+              useEnhancedGraphics={true}
+              theme={currentGame?.spec?.battle_visuals?.theme || 'fantasy_castle'}
+              playerCharacter={currentGame?.spec?.battle_visuals?.playerCharacter || 'knight'}
+              enemyType={currentGame?.spec?.battle_visuals?.enemyType || 'orc'}
             />
           </div>
           
