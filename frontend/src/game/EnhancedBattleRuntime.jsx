@@ -629,13 +629,30 @@ const EnhancedBattleRuntime = ({
   
   // Get data from spec or use defaults
   const questions = spec?.content?.questions || [];
-  const battleConfig = spec?.battle_config || {
-    damage_per_correct: 10,
-    bonus_damage_per_combo: 5,
-    speed_bonus_threshold_seconds: 5,
-    speed_bonus_damage: 5,
-    player_damage_on_wrong: 10
-  };
+  
+  // Parse battle config with proper defaults (handles undefined/NaN values)
+  // Use useMemo to prevent recreating object on every render
+  // IMPORTANT: This must be defined BEFORE any useEffect that references it
+  const battleConfig = React.useMemo(() => {
+    const rawConfig = spec?.battle_config || {};
+    return {
+      damage_per_correct: Number(rawConfig.damage_per_correct) || 25,
+      bonus_damage_per_combo: Number(rawConfig.bonus_damage_per_combo) || 5,
+      speed_bonus_threshold_seconds: Number(rawConfig.speed_bonus_threshold_seconds) || 5,
+      speed_bonus_damage: Number(rawConfig.speed_bonus_damage) || 5,
+      player_damage_on_wrong: Number(rawConfig.player_damage_on_wrong) || 10,
+      timer_per_round: Number(rawConfig.timer_per_round) || 30,
+      rounds: Number(rawConfig.rounds) || questions.length
+    };
+  }, [spec?.battle_config, questions.length]);
+  
+  // Initialize timer from config when battle starts
+  useEffect(() => {
+    if (gamePhase === 'battle') {
+      setTimeLeft(battleConfig.timer_per_round);
+    }
+  }, [gamePhase, battleConfig.timer_per_round]);
+  
   const enemyData = spec?.entities?.enemy || ENEMIES[enemyType];
   const maxEnemyHealth = enemyData?.health?.max || 100;
   
@@ -696,8 +713,8 @@ const EnhancedBattleRuntime = ({
       setMaxCombo(m => Math.max(m, newCombo));
       damage += (newCombo - 1) * battleConfig.bonus_damage_per_combo;
       
-      // Speed bonus
-      if (timeLeft >= (30 - battleConfig.speed_bonus_threshold_seconds)) {
+      // Speed bonus - answered quickly
+      if (timeLeft >= (battleConfig.timer_per_round - battleConfig.speed_bonus_threshold_seconds)) {
         damage += battleConfig.speed_bonus_damage;
       }
       
@@ -741,14 +758,14 @@ const EnhancedBattleRuntime = ({
     
     if (currentQuestionIndex < questions.length - 1 && enemyHealth > 0 && playerHealth > 0) {
       setCurrentQuestionIndex(i => i + 1);
-      setTimeLeft(30);
+      setTimeLeft(battleConfig.timer_per_round);
       setShowHint(false);
       setGamePhase('battle');
     } else if (enemyHealth > 0 && playerHealth > 0) {
       // No more questions but enemy still alive - victory by survival
       setGamePhase('victory');
     }
-  }, [currentQuestionIndex, questions.length, enemyHealth, playerHealth]);
+  }, [currentQuestionIndex, questions.length, enemyHealth, playerHealth, battleConfig.timer_per_round]);
   
   // Restart game
   const handleRestart = useCallback(() => {
@@ -761,11 +778,11 @@ const EnhancedBattleRuntime = ({
     setCorrectAnswers(0);
     setPlayerHealth(100);
     setEnemyHealth(maxEnemyHealth);
-    setTimeLeft(30);
+    setTimeLeft(battleConfig.timer_per_round);
     setShowHint(false);
     setFeedbackData(null);
     setDamageNumbers([]);
-  }, [maxEnemyHealth]);
+  }, [maxEnemyHealth, battleConfig.timer_per_round]);
   
   // Clean up damage numbers
   useEffect(() => {
