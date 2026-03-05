@@ -19,7 +19,12 @@ from models.marketplace import (
     GameReviewCreate,
     GamePurchase,
     PublisherProfile,
-    SUBCATEGORIES
+    SUBCATEGORIES,
+    CreatorStore,
+    CreatorStoreInDB,
+    CreatorStoreUpdate,
+    CreatorStoreSummary,
+    StoreFollower
 )
 from models.game import GameStatus, GameVisibility
 
@@ -46,6 +51,16 @@ def get_reviews_collection():
 def get_purchases_collection():
     db = get_database()
     return db["game_purchases"]
+
+
+def get_stores_collection():
+    db = get_database()
+    return db["creator_stores"]
+
+
+def get_store_followers_collection():
+    db = get_database()
+    return db["store_followers"]
 
 
 # ============== Browse & Search ==============
@@ -807,3 +822,432 @@ async def update_game_rating(game_id: str):
                 "review_count": result["count"]
             }}
         )
+
+
+
+# ==================== Creator Store Endpoints ====================
+
+def generate_store_slug(name: str) -> str:
+    """Generate URL-friendly slug from store name."""
+    slug = re.sub(r'[^a-zA-Z0-9\s-]', '', name.lower())
+    slug = re.sub(r'[\s_]+', '-', slug)
+    slug = re.sub(r'-+', '-', slug).strip('-')
+    return slug[:50]
+
+
+@router.post("/store", response_model=CreatorStore, status_code=status.HTTP_201_CREATED)
+async def create_store(
+    store_name: str = Query(..., min_length=3, max_length=50),
+    tagline: Optional[str] = Query(None, max_length=100),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Create a creator store for the current user.
+    Each user can only have one store.
+    """
+    stores = get_stores_collection()
+    users = get_users_collection()
+    
+    # Check if user already has a store
+    existing = await stores.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="You already have a store")
+    
+    # Generate unique slug
+    base_slug = generate_store_slug(store_name)
+    slug = base_slug
+    counter = 1
+    while await stores.find_one({"slug": slug}):
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    
+    # Get user info for defaults
+    user = await users.find_one({"id": current_user["id"]}, {"_id": 0})
+    
+    # Create store
+    store = CreatorStoreInDB(
+        user_id=current_user["id"],
+        store_name=store_name,
+        slug=slug,
+        tagline=tagline,
+        logo_url=user.get("avatar_url") if user else None
+    )
+    
+    await stores.insert_one(store.to_mongo_dict())
+    
+    logger.info(f"Created store '{store_name}' for user {current_user['id']}")
+    
+    return await get_store_response(store.id)
+
+
+@router.get("/store/my", response_model=CreatorStore)
+async def get_my_store(current_user: dict = Depends(get_current_user)):
+    """Get the current user's store."""
+    stores = get_stores_collection()
+    
+    store_doc = await stores.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    if not store_doc:
+        raise HTTPException(status_code=404, detail="You don't have a store yet")
+    
+    return await get_store_response(store_doc["id"])
+
+
+@router.get("/store/{store_slug}", response_model=CreatorStore)
+async def get_store_by_slug(store_slug: str):
+    """Get a creator store by its URL slug."""
+    stores = get_stores_collection()
+    
+    store_doc = await stores.find_one({"slug": store_slug}, {"_id": 0})
+    if not store_doc:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    return await get_store_response(store_doc["id"])
+
+
+@router.get("/store/id/{store_id}", response_model=CreatorStore)
+async def get_store_by_id(store_id: str):
+    """Get a creator store by ID."""
+    return await get_store_response(store_id)
+
+
+@router.put("/store", response_model=CreatorStore)
+async def update_my_store(
+    update: CreatorStoreUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update the current user's store."""
+    stores = get_stores_collection()
+    
+    store_doc = await stores.find_one({"user_id": current_user["id"]}, {"_id": 0})
+    if not store_doc:
+        raise HTTPException(status_code=404, detail="You don't have a store yet")
+    
+    # Build update dict
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No updates provided")
+    
+    # Update slug if store name changed
+    if "store_name" in update_data:
+        base_slug = generate_store_slug(update_data["store_name"])
+        slug = base_slug
+        counter = 1
+        while True:
+            existing = await stores.find_one({"slug": slug, "id": {"$ne": store_doc["id"]}})
+            if not existing:
+                break
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        update_data["slug"] = slug
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await stores.update_one(
+        {"id": store_doc["id"]},
+        {"$set": update_data}
+    )
+    
+    return await get_store_response(store_doc["id"])
+
+
+@router.get("/store/{store_slug}/products", response_model=MarketplaceSearchResult)
+async def get_store_products(
+    store_slug: str,
+    category: Optional[str] = None,
+    sort_by: str = Query("newest", enum=["newest", "popular", "rating", "price_low", "price_high"]),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=50)
+):
+    """Get all products from a store."""
+    stores = get_stores_collection()
+    games = get_games_collection()
+    users = get_users_collection()
+    
+    # Get store
+    store_doc = await stores.find_one({"slug": store_slug}, {"_id": 0})
+    if not store_doc:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    # Build query
+    query = {
+        "owner_id": store_doc["user_id"],
+        "is_marketplace_listed": True
+    }
+    
+    if category:
+        query["marketplace_category"] = category
+    
+    # Sort
+    sort_field = {
+        "newest": ("published_at", -1),
+        "popular": ("play_count", -1),
+        "rating": ("avg_rating", -1),
+        "price_low": ("price_cents", 1),
+        "price_high": ("price_cents", -1)
+    }.get(sort_by, ("published_at", -1))
+    
+    # Get total count
+    total = await games.count_documents(query)
+    
+    # Paginate
+    skip = (page - 1) * limit
+    cursor = games.find(query, {"_id": 0}).sort(*sort_field).skip(skip).limit(limit)
+    
+    # Get creator info
+    creator = await users.find_one({"id": store_doc["user_id"]}, {"_id": 0})
+    
+    listings = []
+    async for game in cursor:
+        listings.append(build_listing_from_game(game, creator))
+    
+    return MarketplaceSearchResult(
+        listings=listings,
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=(total + limit - 1) // limit,
+        facets={}
+    )
+
+
+@router.post("/store/{store_slug}/follow")
+async def follow_store(
+    store_slug: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Follow a creator store."""
+    stores = get_stores_collection()
+    followers = get_store_followers_collection()
+    
+    store_doc = await stores.find_one({"slug": store_slug}, {"_id": 0})
+    if not store_doc:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    if store_doc["user_id"] == current_user["id"]:
+        raise HTTPException(status_code=400, detail="You cannot follow your own store")
+    
+    # Check if already following
+    existing = await followers.find_one({
+        "store_id": store_doc["id"],
+        "user_id": current_user["id"]
+    })
+    
+    if existing:
+        return {"success": True, "message": "Already following", "is_following": True}
+    
+    # Create follow
+    follower = StoreFollower(
+        store_id=store_doc["id"],
+        user_id=current_user["id"]
+    )
+    
+    await followers.insert_one(follower.model_dump())
+    
+    # Update store follower count
+    await stores.update_one(
+        {"id": store_doc["id"]},
+        {"$inc": {"follower_count": 1}}
+    )
+    
+    return {"success": True, "message": "Now following store", "is_following": True}
+
+
+@router.delete("/store/{store_slug}/follow")
+async def unfollow_store(
+    store_slug: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Unfollow a creator store."""
+    stores = get_stores_collection()
+    followers = get_store_followers_collection()
+    
+    store_doc = await stores.find_one({"slug": store_slug}, {"_id": 0})
+    if not store_doc:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    result = await followers.delete_one({
+        "store_id": store_doc["id"],
+        "user_id": current_user["id"]
+    })
+    
+    if result.deleted_count > 0:
+        await stores.update_one(
+            {"id": store_doc["id"]},
+            {"$inc": {"follower_count": -1}}
+        )
+    
+    return {"success": True, "message": "Unfollowed store", "is_following": False}
+
+
+@router.get("/store/{store_slug}/is-following")
+async def check_following(
+    store_slug: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Check if current user is following a store."""
+    stores = get_stores_collection()
+    followers = get_store_followers_collection()
+    
+    store_doc = await stores.find_one({"slug": store_slug}, {"_id": 0})
+    if not store_doc:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    existing = await followers.find_one({
+        "store_id": store_doc["id"],
+        "user_id": current_user["id"]
+    })
+    
+    return {"is_following": existing is not None}
+
+
+@router.get("/stores/featured", response_model=List[CreatorStoreSummary])
+async def get_featured_stores(limit: int = Query(6, ge=1, le=20)):
+    """Get featured/top creator stores."""
+    stores = get_stores_collection()
+    
+    # Get top stores by follower count and rating
+    cursor = stores.find(
+        {"total_products": {"$gt": 0}},
+        {"_id": 0}
+    ).sort([("is_featured_seller", -1), ("follower_count", -1), ("avg_rating", -1)]).limit(limit)
+    
+    results = []
+    async for doc in cursor:
+        results.append(CreatorStoreSummary(
+            id=doc["id"],
+            user_id=doc["user_id"],
+            store_name=doc["store_name"],
+            slug=doc["slug"],
+            logo_url=doc.get("logo_url"),
+            is_verified=doc.get("is_verified", False),
+            avg_rating=doc.get("avg_rating", 0),
+            total_products=doc.get("total_products", 0)
+        ))
+    
+    return results
+
+
+async def get_store_response(store_id: str) -> CreatorStore:
+    """Get full store response with featured products."""
+    stores = get_stores_collection()
+    games = get_games_collection()
+    users = get_users_collection()
+    
+    store_doc = await stores.find_one({"id": store_id}, {"_id": 0})
+    if not store_doc:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    # Get featured products
+    featured_products = []
+    featured_ids = store_doc.get("featured_game_ids", [])
+    
+    if featured_ids:
+        cursor = games.find(
+            {"id": {"$in": featured_ids}, "is_marketplace_listed": True},
+            {"_id": 0}
+        )
+        creator = await users.find_one({"id": store_doc["user_id"]}, {"_id": 0})
+        async for game in cursor:
+            featured_products.append(build_listing_from_game(game, creator))
+    
+    # If no featured set, get top games
+    if not featured_products:
+        cursor = games.find(
+            {"owner_id": store_doc["user_id"], "is_marketplace_listed": True},
+            {"_id": 0}
+        ).sort("play_count", -1).limit(6)
+        creator = await users.find_one({"id": store_doc["user_id"]}, {"_id": 0})
+        async for game in cursor:
+            featured_products.append(build_listing_from_game(game, creator))
+    
+    return CreatorStore(
+        id=store_doc["id"],
+        user_id=store_doc["user_id"],
+        store_name=store_doc["store_name"],
+        slug=store_doc["slug"],
+        tagline=store_doc.get("tagline"),
+        about=store_doc.get("about"),
+        banner_url=store_doc.get("banner_url"),
+        logo_url=store_doc.get("logo_url"),
+        accent_color=store_doc.get("accent_color", "#7c3aed"),
+        website_url=store_doc.get("website_url"),
+        twitter_handle=store_doc.get("twitter_handle"),
+        youtube_url=store_doc.get("youtube_url"),
+        instagram_handle=store_doc.get("instagram_handle"),
+        total_products=store_doc.get("total_products", 0),
+        total_sales=store_doc.get("total_sales", 0),
+        total_downloads=store_doc.get("total_downloads", 0),
+        avg_rating=store_doc.get("avg_rating", 0),
+        review_count=store_doc.get("review_count", 0),
+        follower_count=store_doc.get("follower_count", 0),
+        is_verified=store_doc.get("is_verified", False),
+        is_featured_seller=store_doc.get("is_featured_seller", False),
+        badges=store_doc.get("badges", []),
+        featured_products=featured_products,
+        created_at=datetime.fromisoformat(store_doc["created_at"]) if isinstance(store_doc.get("created_at"), str) else store_doc.get("created_at", datetime.now(timezone.utc))
+    )
+
+
+async def update_store_stats(user_id: str):
+    """Update cached stats for a creator's store."""
+    stores = get_stores_collection()
+    games = get_games_collection()
+    reviews = get_reviews_collection()
+    purchases = get_purchases_collection()
+    
+    store_doc = await stores.find_one({"user_id": user_id}, {"_id": 0})
+    if not store_doc:
+        return
+    
+    # Count products
+    total_products = await games.count_documents({
+        "owner_id": user_id,
+        "is_marketplace_listed": True
+    })
+    
+    # Sum plays and calculate avg rating
+    pipeline = [
+        {"$match": {"owner_id": user_id, "is_marketplace_listed": True}},
+        {"$group": {
+            "_id": None,
+            "total_plays": {"$sum": "$play_count"},
+            "total_downloads": {"$sum": "$purchase_count"},
+            "avg_rating": {"$avg": "$avg_rating"},
+            "review_count": {"$sum": "$review_count"}
+        }}
+    ]
+    
+    stats = {"total_plays": 0, "total_downloads": 0, "avg_rating": 0, "review_count": 0}
+    async for doc in games.aggregate(pipeline):
+        stats = doc
+        break
+    
+    # Count sales revenue
+    revenue_pipeline = [
+        {"$match": {"seller_id": user_id, "status": "completed"}},
+        {"$group": {
+            "_id": None,
+            "total_sales": {"$sum": 1},
+            "total_revenue": {"$sum": "$price_cents"}
+        }}
+    ]
+    
+    revenue_stats = {"total_sales": 0, "total_revenue": 0}
+    async for doc in purchases.aggregate(revenue_pipeline):
+        revenue_stats = doc
+        break
+    
+    # Update store
+    await stores.update_one(
+        {"id": store_doc["id"]},
+        {"$set": {
+            "total_products": total_products,
+            "total_sales": revenue_stats.get("total_sales", 0),
+            "total_revenue_cents": revenue_stats.get("total_revenue", 0),
+            "total_downloads": stats.get("total_downloads", 0),
+            "avg_rating": round(stats.get("avg_rating", 0) or 0, 1),
+            "review_count": stats.get("review_count", 0),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )

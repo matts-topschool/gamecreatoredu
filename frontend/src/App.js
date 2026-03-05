@@ -23,6 +23,7 @@ import Classes from "@/pages/Classes";
 import ClassDetail from "@/pages/ClassDetail";
 import Marketplace from "@/pages/Marketplace";
 import MarketplaceListing from "@/pages/MarketplaceListing";
+import CreatorStore from "@/pages/CreatorStore";
 import Integrations from "@/pages/Integrations";
 import GoogleCourses from "@/pages/GoogleCourses";
 import FileImport from "@/pages/FileImport";
@@ -91,6 +92,7 @@ function App() {
             <Route path="/marketplace/sell" element={<Placeholder title="Seller Dashboard" />} />
             <Route path="/marketplace/publisher/:userId" element={<Placeholder title="Publisher Profile" />} />
             <Route path="/marketplace/:gameId" element={<MarketplaceListing />} />
+            <Route path="/store/:storeSlug" element={<CreatorStore />} />
 
             {/* Settings */}
             <Route path="/settings" element={<Settings />} />

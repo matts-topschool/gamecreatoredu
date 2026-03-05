@@ -121,6 +121,86 @@ const marketplaceService = {
   getPublisher: async (userId) => {
     const response = await api.get(`/marketplace/publisher/${userId}`);
     return response.data;
+  },
+
+  // ==================== Creator Store ====================
+
+  /**
+   * Create a new store.
+   */
+  createStore: async (storeName, tagline = null) => {
+    const params = new URLSearchParams({ store_name: storeName });
+    if (tagline) params.append('tagline', tagline);
+    const response = await api.post(`/marketplace/store?${params}`);
+    return response.data;
+  },
+
+  /**
+   * Get the current user's store.
+   */
+  getMyStore: async () => {
+    const response = await api.get('/marketplace/store/my');
+    return response.data;
+  },
+
+  /**
+   * Get a store by slug.
+   */
+  getStore: async (slug) => {
+    const response = await api.get(`/marketplace/store/${slug}`);
+    return response.data;
+  },
+
+  /**
+   * Update the current user's store.
+   */
+  updateStore: async (data) => {
+    const response = await api.put('/marketplace/store', data);
+    return response.data;
+  },
+
+  /**
+   * Get products from a store.
+   */
+  getStoreProducts: async (slug, params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.sortBy) searchParams.append('sort_by', params.sortBy);
+    if (params.page) searchParams.append('page', params.page);
+    if (params.category) searchParams.append('category', params.category);
+    const response = await api.get(`/marketplace/store/${slug}/products?${searchParams}`);
+    return response.data;
+  },
+
+  /**
+   * Follow a store.
+   */
+  followStore: async (slug) => {
+    const response = await api.post(`/marketplace/store/${slug}/follow`);
+    return response.data;
+  },
+
+  /**
+   * Unfollow a store.
+   */
+  unfollowStore: async (slug) => {
+    const response = await api.delete(`/marketplace/store/${slug}/follow`);
+    return response.data;
+  },
+
+  /**
+   * Check if following a store.
+   */
+  isFollowingStore: async (slug) => {
+    const response = await api.get(`/marketplace/store/${slug}/is-following`);
+    return response.data;
+  },
+
+  /**
+   * Get featured stores.
+   */
+  getFeaturedStores: async (limit = 6) => {
+    const response = await api.get(`/marketplace/stores/featured?limit=${limit}`);
+    return response.data;
   }
 };
 

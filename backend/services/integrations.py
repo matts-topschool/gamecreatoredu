@@ -399,7 +399,8 @@ SUPPORTED_PROVIDERS = [
         "requires_oauth": False,
         "requires_api_token": True,
         "region": "global",
-        "category": "lms"
+        "category": "lms",
+        "coming_soon": True
     },
     {
         "id": "clever",
@@ -408,7 +409,8 @@ SUPPORTED_PROVIDERS = [
         "features": ["roster_sync", "sso"],
         "requires_oauth": True,
         "region": "us",
-        "category": "sis"
+        "category": "sis",
+        "coming_soon": True
     },
     {
         "id": "classlink",
@@ -445,7 +447,8 @@ SUPPORTED_PROVIDERS = [
         "features": ["roster_sync", "grade_submission", "parent_portal"],
         "requires_api_token": True,
         "region": "us",
-        "category": "sis"
+        "category": "sis",
+        "coming_soon": True
     },
     # === UK Providers ===
     {
@@ -455,7 +458,8 @@ SUPPORTED_PROVIDERS = [
         "features": ["roster_sync", "grade_submission", "attendance", "ctf_import"],
         "requires_api_token": True,
         "region": "uk",
-        "category": "mis"
+        "category": "mis",
+        "coming_soon": True
     },
     {
         "id": "sims",
@@ -464,7 +468,8 @@ SUPPORTED_PROVIDERS = [
         "features": ["roster_sync", "grade_submission", "ctf_import", "ctf_export"],
         "requires_api_token": True,
         "region": "uk",
-        "category": "mis"
+        "category": "mis",
+        "coming_soon": True
     },
     {
         "id": "bromcom",
@@ -473,7 +478,8 @@ SUPPORTED_PROVIDERS = [
         "features": ["roster_sync", "grade_submission", "ctf_import"],
         "requires_api_token": True,
         "region": "uk",
-        "category": "mis"
+        "category": "mis",
+        "coming_soon": True
     },
     {
         "id": "scholarpack",
@@ -482,7 +488,8 @@ SUPPORTED_PROVIDERS = [
         "features": ["roster_sync", "ctf_import", "ctf_export"],
         "requires_api_token": True,
         "region": "uk",
-        "category": "mis"
+        "category": "mis",
+        "coming_soon": True
     },
     {
         "id": "isams",
@@ -491,7 +498,8 @@ SUPPORTED_PROVIDERS = [
         "features": ["roster_sync", "grade_submission", "parent_portal"],
         "requires_api_token": True,
         "region": "uk",
-        "category": "mis"
+        "category": "mis",
+        "coming_soon": True
     },
     {
         "id": "groupcall",
@@ -500,7 +508,8 @@ SUPPORTED_PROVIDERS = [
         "features": ["roster_sync", "data_sync", "wonde_compatible"],
         "requires_api_token": True,
         "region": "uk",
-        "category": "integration"
+        "category": "integration",
+        "coming_soon": True
     },
     {
         "id": "wonde",
@@ -509,7 +518,8 @@ SUPPORTED_PROVIDERS = [
         "features": ["roster_sync", "universal_connector", "real_time_sync"],
         "requires_api_token": True,
         "region": "uk",
-        "category": "integration"
+        "category": "integration",
+        "coming_soon": True
     },
     # === File Import ===
     {

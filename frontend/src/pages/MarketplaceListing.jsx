@@ -2,7 +2,7 @@
  * MarketplaceListing - Single game detail page in marketplace.
  */
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft,
   Star,
@@ -309,7 +309,14 @@ const MarketplaceListing = () => {
                       {listing.title}
                     </h1>
                     <p className="text-muted-foreground">
-                      by <span className="text-violet-600 font-medium">{listing.creator_name}</span>
+                      by{' '}
+                      <Link 
+                        to={`/store/${listing.creator_id}`} 
+                        className="text-violet-600 font-medium hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {listing.creator_name}
+                      </Link>
                     </p>
                   </div>
                   

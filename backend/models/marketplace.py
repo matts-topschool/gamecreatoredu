@@ -301,3 +301,168 @@ class FeaturedSection(BaseModel):
     # Styling
     background_color: Optional[str] = None
     icon: Optional[str] = None
+
+
+
+# ==================== Creator Store Models ====================
+
+class CreatorStoreSettings(BaseModel):
+    """Settings for a creator's store."""
+    store_name: Optional[str] = None  # Custom store name
+    tagline: Optional[str] = None  # Short tagline
+    about: Optional[str] = None  # Long description/about section
+    
+    # Branding
+    banner_url: Optional[str] = None
+    logo_url: Optional[str] = None
+    accent_color: Optional[str] = "#7c3aed"  # Default violet
+    
+    # Social links
+    website_url: Optional[str] = None
+    twitter_handle: Optional[str] = None
+    youtube_url: Optional[str] = None
+    instagram_handle: Optional[str] = None
+    
+    # Contact
+    support_email: Optional[str] = None
+    
+    # Store features
+    show_reviews: bool = True
+    show_stats: bool = True
+    featured_game_ids: List[str] = Field(default_factory=list, max_length=6)
+    
+    # Custom sections
+    custom_sections: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class CreatorStoreInDB(BaseModel):
+    """Creator store as stored in database."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    
+    # Store info
+    store_name: str
+    slug: str  # URL-friendly store slug
+    tagline: Optional[str] = None
+    about: Optional[str] = None
+    
+    # Branding
+    banner_url: Optional[str] = None
+    logo_url: Optional[str] = None
+    accent_color: str = "#7c3aed"
+    
+    # Social links
+    website_url: Optional[str] = None
+    twitter_handle: Optional[str] = None
+    youtube_url: Optional[str] = None
+    instagram_handle: Optional[str] = None
+    support_email: Optional[str] = None
+    
+    # Store settings
+    show_reviews: bool = True
+    show_stats: bool = True
+    featured_game_ids: List[str] = Field(default_factory=list)
+    
+    # Stats (cached)
+    total_products: int = 0
+    total_sales: int = 0
+    total_revenue_cents: int = 0
+    total_downloads: int = 0
+    avg_rating: float = 0.0
+    review_count: int = 0
+    follower_count: int = 0
+    
+    # Verification & badges
+    is_verified: bool = False
+    is_featured_seller: bool = False
+    badges: List[str] = Field(default_factory=list)  # e.g., ["top_seller", "quality_creator"]
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    def to_mongo_dict(self) -> dict:
+        data = self.model_dump()
+        data['created_at'] = data['created_at'].isoformat()
+        data['updated_at'] = data['updated_at'].isoformat()
+        return data
+
+
+class CreatorStore(BaseModel):
+    """Creator store response schema."""
+    id: str
+    user_id: str
+    store_name: str
+    slug: str
+    tagline: Optional[str]
+    about: Optional[str]
+    
+    # Branding
+    banner_url: Optional[str]
+    logo_url: Optional[str]
+    accent_color: str
+    
+    # Social links
+    website_url: Optional[str]
+    twitter_handle: Optional[str]
+    youtube_url: Optional[str]
+    instagram_handle: Optional[str]
+    
+    # Stats
+    total_products: int
+    total_sales: int
+    total_downloads: int
+    avg_rating: float
+    review_count: int
+    follower_count: int
+    
+    # Badges
+    is_verified: bool
+    is_featured_seller: bool
+    badges: List[str]
+    
+    # Featured products (populated separately)
+    featured_products: List[MarketplaceListing] = Field(default_factory=list)
+    
+    created_at: datetime
+
+
+class CreatorStoreUpdate(BaseModel):
+    """Schema for updating a creator store."""
+    store_name: Optional[str] = Field(None, min_length=3, max_length=50)
+    tagline: Optional[str] = Field(None, max_length=100)
+    about: Optional[str] = Field(None, max_length=2000)
+    
+    banner_url: Optional[str] = None
+    logo_url: Optional[str] = None
+    accent_color: Optional[str] = None
+    
+    website_url: Optional[str] = None
+    twitter_handle: Optional[str] = None
+    youtube_url: Optional[str] = None
+    instagram_handle: Optional[str] = None
+    support_email: Optional[str] = None
+    
+    show_reviews: Optional[bool] = None
+    show_stats: Optional[bool] = None
+    featured_game_ids: Optional[List[str]] = None
+
+
+class StoreFollower(BaseModel):
+    """Store follower record."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    store_id: str
+    user_id: str
+    followed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CreatorStoreSummary(BaseModel):
+    """Lightweight store info for listings."""
+    id: str
+    user_id: str
+    store_name: str
+    slug: str
+    logo_url: Optional[str]
+    is_verified: bool
+    avg_rating: float
+    total_products: int
