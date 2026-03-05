@@ -26,7 +26,8 @@ import {
   BookOpen,
   Zap,
   Trophy,
-  Globe
+  Globe,
+  School
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +64,7 @@ import {
 import useGameStore from '@/stores/gameStore';
 import LivePreview from '@/components/studio/LivePreview';
 import PublishDialog from '@/components/studio/PublishDialog';
+import AssignToClassDialog from '@/components/game/AssignToClassDialog';
 import ThemeSelector from '@/game/ThemeSelector';
 import AdventureWorldSelector from '@/game/AdventureWorldSelector';
 import api from '@/services/api';
@@ -436,6 +438,7 @@ const StudioEditor = () => {
   const [isRefining, setIsRefining] = useState(false);
   const [refinePrompt, setRefinePrompt] = useState('');
   const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
 
   // Load game on mount
   useEffect(() => {
@@ -603,6 +606,16 @@ const StudioEditor = () => {
           >
             <Play className="w-4 h-4 mr-2" />
             Preview
+          </Button>
+          
+          <Button 
+            variant="outline"
+            onClick={() => setShowAssignDialog(true)}
+            className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+            data-testid="assign-game-btn"
+          >
+            <School className="w-4 h-4 mr-2" />
+            Assign
           </Button>
           
           <Button 
@@ -862,6 +875,16 @@ const StudioEditor = () => {
           toast.success('Game published to marketplace!');
           // Optionally refresh game data
           fetchGame(gameId);
+        }}
+      />
+      
+      {/* Assign to Class Dialog */}
+      <AssignToClassDialog
+        open={showAssignDialog}
+        onOpenChange={setShowAssignDialog}
+        game={currentGame}
+        onAssigned={(assignment) => {
+          // Could track assignment in game state if needed
         }}
       />
     </div>

@@ -11,7 +11,11 @@ import {
   Loader2,
   RefreshCw,
   School,
-  AlertCircle
+  AlertCircle,
+  ExternalLink,
+  Calendar,
+  CheckCircle2,
+  Import
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,26 +31,33 @@ import { cn } from '@/lib/utils';
 const GoogleCourses = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
+  const [localClasses, setLocalClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(null);
-  const [importedCourses, setImportedCourses] = useState(new Set());
+  const [syncing, setSyncing] = useState(null);
 
   useEffect(() => {
-    loadCourses();
+    loadData();
   }, []);
 
-  const loadCourses = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/integrations/google/courses');
-      setCourses(response.data.courses || []);
+      // Load Google Classroom courses and local classes in parallel
+      const [coursesRes, classesRes] = await Promise.all([
+        api.get('/integrations/google/courses'),
+        api.get('/classes')
+      ]);
+      
+      setCourses(coursesRes.data.courses || []);
+      setLocalClasses(classesRes.data || []);
     } catch (err) {
       console.error('Failed to load courses:', err);
       if (err.response?.status === 400) {
         toast.error('Google Classroom not connected. Please connect first.');
         navigate('/integrations');
       } else {
-        toast.error('Failed to load courses');
+        toast.error('Failed to load Google Classroom courses');
       }
     } finally {
       setLoading(false);
@@ -57,23 +68,37 @@ const GoogleCourses = () => {
     setImporting(course.external_id);
     try {
       const response = await api.post(`/integrations/google/import-class/${course.external_id}`);
-      
       toast.success(`Imported "${course.name}" with ${response.data.students_imported} students!`);
-      setImportedCourses(prev => new Set([...prev, course.external_id]));
-      
-      // Optionally navigate to the new class
-      // navigate(`/classes/${response.data.class_id}`);
+      loadData(); // Refresh data
     } catch (err) {
       console.error('Failed to import course:', err);
       if (err.response?.data?.detail?.includes('already been imported')) {
         toast.error('This course has already been imported');
-        setImportedCourses(prev => new Set([...prev, course.external_id]));
+        loadData(); // Refresh to show current state
       } else {
         toast.error(err.response?.data?.detail || 'Failed to import course');
       }
     } finally {
       setImporting(null);
     }
+  };
+
+  const handleSyncRoster = async (classId) => {
+    setSyncing(classId);
+    try {
+      const response = await api.post(`/integrations/google/sync-roster/${classId}`);
+      toast.success(`Synced roster: ${response.data.added} added, ${response.data.removed} removed`);
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to sync roster');
+    } finally {
+      setSyncing(null);
+    }
+  };
+
+  // Check if a course is already imported
+  const getLocalClass = (courseExternalId) => {
+    return localClasses.find(c => c.integration?.external_id === courseExternalId);
   };
 
   if (loading) {
@@ -86,6 +111,10 @@ const GoogleCourses = () => {
       </div>
     );
   }
+
+  // Calculate stats
+  const importedCount = localClasses.filter(c => c.integration?.provider === 'google_classroom').length;
+  const availableCount = courses.length - importedCount;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -105,11 +134,11 @@ const GoogleCourses = () => {
               </svg>
               <div>
                 <h1 className="text-xl font-bold text-slate-900">Google Classroom</h1>
-                <p className="text-sm text-muted-foreground">Import your courses</p>
+                <p className="text-sm text-muted-foreground">Import courses and sync rosters</p>
               </div>
             </div>
           </div>
-          <Button variant="outline" onClick={loadCourses}>
+          <Button variant="outline" onClick={loadData}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
@@ -118,6 +147,28 @@ const GoogleCourses = () => {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <p className="text-3xl font-bold text-violet-600">{courses.length}</p>
+              <p className="text-sm text-muted-foreground">Google Courses</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <p className="text-3xl font-bold text-emerald-600">{importedCount}</p>
+              <p className="text-sm text-muted-foreground">Imported</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <p className="text-3xl font-bold text-amber-600">{availableCount}</p>
+              <p className="text-sm text-muted-foreground">Available</p>
+            </CardContent>
+          </Card>
+        </div>
+
         {courses.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
@@ -126,10 +177,16 @@ const GoogleCourses = () => {
               <p className="text-muted-foreground mb-4">
                 You don't have any courses in Google Classroom where you are a teacher.
               </p>
-              <Button variant="outline" onClick={loadCourses}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button variant="outline" onClick={loadData}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
+                <Button onClick={() => window.open('https://classroom.google.com', '_blank')}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open Google Classroom
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -138,38 +195,47 @@ const GoogleCourses = () => {
               <AlertCircle className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
                 Found {courses.length} course{courses.length !== 1 ? 's' : ''} where you are a teacher. 
-                Click "Import" to add a course and its students to GameCraft.
+                Import courses to create classes in GameCraft and sync students automatically.
               </AlertDescription>
             </Alert>
 
             <div className="grid md:grid-cols-2 gap-4">
               {courses.map((course) => {
-                const isImported = importedCourses.has(course.external_id);
+                const localClass = getLocalClass(course.external_id);
+                const isImported = !!localClass;
                 const isImporting = importing === course.external_id;
+                const isSyncing = syncing === localClass?.id;
                 
                 return (
                   <Card 
                     key={course.external_id}
                     className={cn(
-                      "transition-all",
+                      "transition-all hover:shadow-md",
                       isImported && "ring-2 ring-emerald-500"
                     )}
                     data-testid={`course-${course.external_id}`}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">{course.name}</CardTitle>
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <span className="truncate">{course.name}</span>
+                            {isImported && (
+                              <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                            )}
+                          </CardTitle>
                           {course.section && (
                             <Badge variant="outline" className="mt-1">
                               {course.section}
                             </Badge>
                           )}
                         </div>
-                        {isImported && (
-                          <Badge className="bg-emerald-100 text-emerald-700">
-                            <Check className="w-3 h-3 mr-1" />
-                            Imported
+                        {course.metadata?.courseState && (
+                          <Badge 
+                            variant={course.metadata.courseState === 'ACTIVE' ? 'default' : 'secondary'}
+                            className={course.metadata.courseState === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : ''}
+                          >
+                            {course.metadata.courseState}
                           </Badge>
                         )}
                       </div>
@@ -180,29 +246,72 @@ const GoogleCourses = () => {
                       )}
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Users className="w-4 h-4" />
-                          <span>{course.student_count || 'View'} students</span>
+                      {/* Imported class info */}
+                      {isImported && localClass && (
+                        <div className="mb-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                          <div className="flex items-center gap-2 text-emerald-700 text-sm mb-2">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span className="font-medium">Imported to GameCraft</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-emerald-600">
+                            <span className="flex items-center gap-1">
+                              <Users className="w-4 h-4" />
+                              {localClass.student_count || 0} students
+                            </span>
+                            {localClass.integration?.last_sync_at && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-4 h-4" />
+                                Synced {new Date(localClass.integration.last_sync_at).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        
-                        <Button
-                          onClick={() => handleImport(course)}
-                          disabled={isImported || isImporting}
-                          className={cn(
-                            isImported && "bg-emerald-600 hover:bg-emerald-600"
-                          )}
-                          data-testid={`import-${course.external_id}`}
-                        >
-                          {isImporting ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : isImported ? (
-                            <Check className="w-4 h-4 mr-2" />
-                          ) : (
-                            <Download className="w-4 h-4 mr-2" />
-                          )}
-                          {isImported ? 'Imported' : 'Import'}
-                        </Button>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        {isImported ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => navigate(`/dashboard/classes/${localClass.id}`)}
+                            >
+                              View Class
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleSyncRoster(localClass.id)}
+                              disabled={isSyncing}
+                              title="Sync roster from Google Classroom"
+                            >
+                              {isSyncing ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            className="w-full bg-violet-600 hover:bg-violet-700"
+                            onClick={() => handleImport(course)}
+                            disabled={isImporting}
+                            data-testid={`import-${course.external_id}`}
+                          >
+                            {isImporting ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Importing...
+                              </>
+                            ) : (
+                              <>
+                                <Import className="w-4 h-4 mr-2" />
+                                Import Course
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -218,28 +327,35 @@ const GoogleCourses = () => {
             <CardTitle>What happens when you import?</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-3">
-                <Check className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <span>A new class is created in GameCraft with the same name</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <span>All students from the Google Classroom course are added to the class</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <span>You can sync rosters at any time to add new students</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <span>Game assignments can be pushed to Google Classroom</span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                <span>Student game results can be synced as grades</span>
-              </li>
-            </ul>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-violet-600 font-bold">1</span>
+                </div>
+                <div>
+                  <h4 className="font-medium">Create Class</h4>
+                  <p className="text-sm text-muted-foreground">A new class is created in GameCraft linked to your Google Classroom course.</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-violet-600 font-bold">2</span>
+                </div>
+                <div>
+                  <h4 className="font-medium">Import Students</h4>
+                  <p className="text-sm text-muted-foreground">All students from the Google Classroom course are automatically imported.</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-violet-600 font-bold">3</span>
+                </div>
+                <div>
+                  <h4 className="font-medium">Sync Grades</h4>
+                  <p className="text-sm text-muted-foreground">When you assign games, grades are pushed back to Google Classroom.</p>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </main>
