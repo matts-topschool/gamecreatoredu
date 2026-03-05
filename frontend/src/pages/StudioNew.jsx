@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Check,
   AlertCircle,
-  Gamepad2
+  Gamepad2,
+  Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,6 +37,8 @@ import { Slider } from '@/components/ui/slider';
 import useGameStore from '@/stores/gameStore';
 import api from '@/services/api';
 import { toast } from 'sonner';
+import ThemeSelector from '@/game/ThemeSelector';
+import GameRuntimeSelector from '@/components/game/GameRuntimeSelector';
 
 const examplePrompts = [
   {
@@ -122,6 +125,12 @@ const StudioNew = () => {
   const [compiledSpec, setCompiledSpec] = useState(null);
   const [compilationError, setCompilationError] = useState(null);
   const [activeTab, setActiveTab] = useState('prompt');
+
+  // Battle customization state
+  const [selectedTheme, setSelectedTheme] = useState('fantasy_castle');
+  const [selectedCharacter, setSelectedCharacter] = useState('knight');
+  const [selectedEnemy, setSelectedEnemy] = useState('orc');
+  const [showLivePreview, setShowLivePreview] = useState(false);
 
   // Poll for compilation status
   const pollForCompletion = async (taskId, maxAttempts = 60) => {
@@ -491,6 +500,13 @@ const StudioNew = () => {
                   </p>
                 </div>
                 <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowLivePreview(!showLivePreview)}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    {showLivePreview ? 'Hide Preview' : 'Live Preview'}
+                  </Button>
                   <Button variant="outline" onClick={() => setActiveTab('prompt')}>
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Regenerate
@@ -502,85 +518,119 @@ const StudioNew = () => {
                 </div>
               </div>
 
-              {/* Game Preview */}
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Game Canvas Placeholder */}
-                <Card className="aspect-video bg-slate-900 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <Gamepad2 className="w-16 h-16 mx-auto mb-4 text-violet-400" />
-                    <p className="text-lg font-medium">Game Preview</p>
-                    <p className="text-sm text-slate-400 mt-2">
-                      Full preview available after saving
-                    </p>
-                  </div>
-                </Card>
+              {/* Theme Selector for Battle Games */}
+              {(compiledSpec.meta?.game_type === 'battle' || gameType === 'battle') && (
+                <ThemeSelector
+                  selectedTheme={selectedTheme}
+                  selectedCharacter={selectedCharacter}
+                  selectedEnemy={selectedEnemy}
+                  onThemeChange={setSelectedTheme}
+                  onCharacterChange={setSelectedCharacter}
+                  onEnemyChange={setSelectedEnemy}
+                  gameType="battle"
+                />
+              )}
 
-                {/* Game Stats */}
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Game Overview</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Type</span>
-                        <Badge>{compiledSpec.meta?.game_type || 'quiz'}</Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Questions</span>
-                        <span className="font-medium">{compiledSpec.content?.questions?.length || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Grades</span>
-                        <span className="font-medium">
-                          {compiledSpec.meta?.educational?.grade_levels?.join(', ') || 'All'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Duration</span>
-                        <span className="font-medium">
-                          ~{compiledSpec.meta?.gameplay?.estimated_duration_minutes || 15} min
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Leaderboard</span>
-                        <span className="font-medium">
-                          {compiledSpec.settings?.leaderboard?.enabled ? (
-                            <Check className="w-4 h-4 text-green-600 inline" />
-                          ) : 'Disabled'}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Sample Questions */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">Sample Questions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3 max-h-64 overflow-y-auto">
-                        {compiledSpec.content?.questions?.slice(0, 5).map((q, i) => (
-                          <div key={i} className="p-3 bg-slate-50 rounded-lg">
-                            <p className="text-sm font-medium">{q.stem}</p>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {q.options?.map((opt) => (
-                                <Badge 
-                                  key={opt.id} 
-                                  variant={opt.is_correct ? 'default' : 'outline'}
-                                  className={opt.is_correct ? 'bg-green-600' : ''}
-                                >
-                                  {opt.text}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+              {/* Live Game Preview */}
+              {showLivePreview ? (
+                <div className="rounded-2xl overflow-hidden border border-slate-700">
+                  <GameRuntimeSelector
+                    spec={compiledSpec}
+                    onComplete={(result) => {
+                      toast.success(`Preview complete! Score: ${result.score}`);
+                      setShowLivePreview(false);
+                    }}
+                    onExit={() => setShowLivePreview(false)}
+                    useEnhancedGraphics={true}
+                    theme={selectedTheme}
+                    playerCharacter={selectedCharacter}
+                    enemyType={selectedEnemy}
+                  />
                 </div>
-              </div>
+              ) : (
+                /* Game Preview Card */
+                <div className="grid lg:grid-cols-2 gap-6">
+                  {/* Game Canvas Placeholder */}
+                  <Card 
+                    className="aspect-video bg-slate-900 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-violet-500 transition-all"
+                    onClick={() => setShowLivePreview(true)}
+                  >
+                    <div className="text-center text-white">
+                      <Gamepad2 className="w-16 h-16 mx-auto mb-4 text-violet-400" />
+                      <p className="text-lg font-medium">Click to Play Preview</p>
+                      <p className="text-sm text-slate-400 mt-2">
+                        Test your game before saving
+                      </p>
+                    </div>
+                  </Card>
+
+                  {/* Game Stats */}
+                  <div className="space-y-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Game Overview</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Type</span>
+                          <Badge>{compiledSpec.meta?.game_type || 'quiz'}</Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Questions</span>
+                          <span className="font-medium">{compiledSpec.content?.questions?.length || 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Grades</span>
+                          <span className="font-medium">
+                            {compiledSpec.meta?.educational?.grade_levels?.join(', ') || 'All'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Duration</span>
+                          <span className="font-medium">
+                            ~{compiledSpec.meta?.gameplay?.estimated_duration_minutes || 15} min
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Leaderboard</span>
+                          <span className="font-medium">
+                            {compiledSpec.settings?.leaderboard?.enabled ? (
+                              <Check className="w-4 h-4 text-green-600 inline" />
+                            ) : 'Disabled'}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Sample Questions */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Sample Questions</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                          {compiledSpec.content?.questions?.slice(0, 5).map((q, i) => (
+                            <div key={i} className="p-3 bg-slate-50 rounded-lg">
+                              <p className="text-sm font-medium">{q.stem}</p>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {q.options?.map((opt) => (
+                                  <Badge 
+                                    key={opt.id} 
+                                    variant={opt.is_correct ? 'default' : 'outline'}
+                                    className="text-xs"
+                                  >
+                                    {opt.text}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>

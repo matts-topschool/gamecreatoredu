@@ -1,13 +1,14 @@
 /**
  * GameRuntimeSelector - Routes to the appropriate game runtime based on game type.
- * Supports: quiz, battle (more coming soon)
+ * Supports: quiz, battle (enhanced), adventure (coming), platformer (coming), puzzle (coming), simulation (coming)
  */
 import React from 'react';
 import GameRuntime from './GameRuntime';
 import BattleRuntime from './BattleRuntime';
+import EnhancedBattleRuntime from '../../game/EnhancedBattleRuntime';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Gamepad2, Construction } from 'lucide-react';
+import { Gamepad2, Construction, Sparkles } from 'lucide-react';
 
 /**
  * Placeholder for game types not yet implemented
@@ -31,6 +32,19 @@ const ComingSoonRuntime = ({ spec, gameType, onExit }) => (
 
 /**
  * GameRuntimeSelector - Main component
+ * 
+ * Props:
+ * - spec: GameSpec object with game content
+ * - onComplete: Callback when game finishes
+ * - onExit: Callback to exit game
+ * - sessionId: Optional session ID for tracking
+ * - playerId: Player identifier
+ * - playerName: Display name
+ * - useEnhancedGraphics: Whether to use enhanced visual mode (default: true)
+ * - theme: Battle arena theme (from AssetCatalog)
+ * - playerCharacter: Selected player character (from AssetCatalog)
+ * - enemyType: Selected enemy type (from AssetCatalog)
+ * - fallbackToQuiz: If true, unsupported types fall back to quiz
  */
 const GameRuntimeSelector = ({ 
   spec, 
@@ -39,7 +53,11 @@ const GameRuntimeSelector = ({
   sessionId,
   playerId,
   playerName,
-  fallbackToQuiz = true  // If true, unsupported types fall back to quiz
+  useEnhancedGraphics = true,
+  theme = 'fantasy_castle',
+  playerCharacter = 'knight',
+  enemyType = 'orc',
+  fallbackToQuiz = true
 }) => {
   const gameType = spec?.meta?.game_type?.toLowerCase() || 'quiz';
 
@@ -58,6 +76,21 @@ const GameRuntimeSelector = ({
       );
     
     case 'battle':
+    case 'monster_battle':
+      // Use enhanced battle runtime with visuals if enabled
+      if (useEnhancedGraphics) {
+        return (
+          <EnhancedBattleRuntime
+            spec={spec}
+            onComplete={onComplete}
+            onExit={onExit}
+            theme={theme}
+            playerCharacter={playerCharacter}
+            enemyType={enemyType}
+          />
+        );
+      }
+      // Fallback to original battle runtime
       return (
         <BattleRuntime
           spec={spec}
