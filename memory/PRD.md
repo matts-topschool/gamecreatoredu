@@ -60,6 +60,18 @@ Build an AI-Powered Game Creation & Marketplace for Educators - a platform where
 - [x] Integrations page with navigation links
 - [x] Assign to Class dialog for games
 
+### Phase 6: Student Portal (MVP COMPLETED - March 2026)
+- [x] Student login via class join code + name (no password)
+- [x] Student dashboard with assignments list
+- [x] Assignment cards showing due dates, status, scores
+- [x] Class leaderboard showing top students
+- [x] Play page integration with assignment tracking
+- [x] Automatic grade submission to assignments
+- [x] Stats cards (To Do, Completed, Score, Accuracy)
+- [ ] Future: Student accounts with passwords
+- [ ] Future: Google sign-in for students
+- [ ] Future: Student progress tracking over time
+
 ### Phase 5A: UI Navigation (COMPLETED - March 5, 2026)
 - [x] Added "Integrations" link to landing page header
 - [x] Added "Integrations" link to dashboard sidebar
@@ -196,13 +208,10 @@ src/
 - Password: `test123456`
 
 ## Last Updated
-March 5, 2026 - Adventure Game Polish COMPLETED:
-- Created 35+ unique scene backgrounds across all 6 theme worlds
-- Pirate: Beach, Jungle, Waterfall, Cave, Underground Lake, Temple, Treasure Chamber
-- Mansion: Entrance, Library, Kitchen, Gallery, Basement, Attic, Secret Chamber
-- Space: Launch Pad, Bridge, Engine Room, Asteroid Field, Space Station, Nebula, Planet
-- Egypt: Oasis, Pyramid Entrance, Hieroglyph Hall, Trap Corridor, Burial Chamber, Treasury, Throne
-- Forest: Edge, Fairy Glade, Witch's Cottage, Troll Bridge, Ancient Grove, Crystal Cave, Crystal Castle
-- Ocean: Shore, Coral Reef, Rainbow Reef, Shipwreck, Deep Trench, Underwater Caves, Mermaid Palace
+March 6, 2026 - Student Portal MVP COMPLETED:
+- Backend: Student login via join code + name, dashboard API, assignment completion, class leaderboard
+- Frontend: StudentLogin page (/student), StudentDashboard page (/student/dashboard)
+- Play page updated to handle assignment context and submit results to assignment endpoint
+- Grade syncing infrastructure ready (connects to existing Google Classroom integration)
 
-Previous session: Marketplace library fix, Google Classroom integration verified, Assign dialog improvements
+Previous: Adventure Game Polish (35+ scenes), Exit button fixes, Marketplace library fix

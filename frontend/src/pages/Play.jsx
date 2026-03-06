@@ -1,9 +1,10 @@
 /**
  * Play - Game play page for running games.
  * Renders the game runtime for a specific game.
+ * Supports assignment context for students.
  */
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, AlertCircle, Share2, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,12 +14,24 @@ import Leaderboard from '@/components/game/Leaderboard';
 import useGameStore from '@/stores/gameStore';
 import useAuthStore from '@/stores/authStore';
 import leaderboardService from '@/services/leaderboardService';
+import api from '@/services/api';
 import { toast } from 'sonner';
+
+// Get student session for assignment submissions
+const getStudentSession = () => {
+  try {
+    const session = localStorage.getItem('gamecraft_student_session');
+    return session ? JSON.parse(session) : null;
+  } catch {
+    return null;
+  }
+};
 
 const Play = () => {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { currentGame, fetchGame, isLoading } = useGameStore();
   const { user, isAuthenticated } = useAuthStore();
   
@@ -26,6 +39,11 @@ const Play = () => {
   const [finalStats, setFinalStats] = useState(null);
   const [leaderboard, setLeaderboard] = useState(null);
   const [myRank, setMyRank] = useState(null);
+  
+  // Assignment context
+  const assignmentId = searchParams.get('assignment');
+  const isStudentMode = searchParams.get('student') === 'true';
+  const studentSession = getStudentSession();
 
   // Load game on mount
   useEffect(() => {
@@ -50,19 +68,46 @@ const Play = () => {
     setGameComplete(true);
     setFinalStats(stats);
     
-    // Submit result to backend
+    const score = stats.score || 0;
+    const questionsAnswered = stats.questionsAnswered || 1;
+    const correctAnswers = stats.correctAnswers || 0;
+    const accuracy = Math.round((correctAnswers / Math.max(questionsAnswered, 1)) * 100);
+    
+    // If this is a student assignment, submit to assignment endpoint
+    if (assignmentId && isStudentMode && studentSession?.token) {
+      try {
+        const response = await api.post(
+          `/student/assignment/${assignmentId}/complete?token=${studentSession.token}`,
+          {
+            score: score,
+            accuracy: accuracy,
+            time_seconds: Math.floor((stats.totalTime || 0) / 1000),
+            max_combo: stats.maxCombo || 0,
+            questions_answered: questionsAnswered,
+            questions_correct: correctAnswers
+          }
+        );
+        
+        toast.success(response.data.message || 'Great job! Your result has been recorded.');
+      } catch (err) {
+        console.error('Failed to submit assignment result:', err);
+        toast.error('Failed to save your result. Please try again.');
+      }
+    }
+    
+    // Also submit to general leaderboard
     try {
       const result = {
         game_id: gameId,
-        player_name: user?.display_name || 'Guest Player',
-        score: stats.score || 0,
-        accuracy: stats.correctAnswers / Math.max(stats.questionsAnswered || 1, 1),
-        questions_total: stats.questionsAnswered || 0,
-        questions_correct: stats.correctAnswers || 0,
+        player_name: user?.display_name || studentSession?.student?.display_name || 'Guest Player',
+        score: score,
+        accuracy: accuracy / 100,
+        questions_total: questionsAnswered,
+        questions_correct: correctAnswers,
         time_taken_seconds: Math.floor((stats.totalTime || 0) / 1000),
         max_combo: stats.maxCombo || 0,
         hints_used: stats.hintsUsed || 0,
-        damage_dealt: stats.score || 0,  // For battle games
+        damage_dealt: score,
         enemy_defeated: stats.enemyDefeated || false
       };
       
@@ -77,15 +122,22 @@ const Play = () => {
         setMyRank(rankData);
       }
       
-      toast.success('Score submitted to leaderboard!');
+      if (!assignmentId) {
+        toast.success('Score submitted to leaderboard!');
+      }
     } catch (err) {
       console.error('Failed to submit result:', err);
-      // Don't show error to user - game experience shouldn't be affected
     }
   };
 
   // Handle exit
   const handleExit = () => {
+    // If student mode, go back to student dashboard
+    if (isStudentMode && studentSession) {
+      navigate('/student/dashboard');
+      return;
+    }
+    
     const from = location.state?.from || '/dashboard';
     navigate(from);
   };

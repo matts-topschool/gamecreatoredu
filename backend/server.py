@@ -22,6 +22,7 @@ from routers.leaderboard import router as leaderboard_router
 from routers.classes import router as classes_router
 from routers.marketplace import router as marketplace_router
 from routers.integrations import router as integrations_router
+from routers.student import router as student_router
 from schemas.common import HealthCheckResponse
 
 # Configure logging
@@ -78,6 +79,7 @@ app.include_router(leaderboard_router, prefix="/api")
 app.include_router(classes_router, prefix="/api")
 app.include_router(marketplace_router, prefix="/api")
 app.include_router(integrations_router, prefix="/api")
+app.include_router(student_router, prefix="/api")
 
 
 # Root endpoint

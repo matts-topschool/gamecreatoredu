@@ -65,6 +65,20 @@ def verify_token(token: str) -> Optional[dict]:
         return None
 
 
+def decode_token(token: str) -> dict:
+    """Decode a JWT token, raising exception if invalid."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+        return payload
+    except JWTError as e:
+        logger.warning(f"Token decode failed: {e}")
+        raise ValueError(f"Invalid token: {e}")
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> dict:

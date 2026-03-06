@@ -28,6 +28,8 @@ import Integrations from "@/pages/Integrations";
 import GoogleCourses from "@/pages/GoogleCourses";
 import FileImport from "@/pages/FileImport";
 import MyGames from "@/pages/MyGames";
+import StudentLogin from "@/pages/StudentLogin";
+import StudentDashboard from "@/pages/StudentDashboard";
 
 // Placeholder pages for Phase 1
 const Placeholder = ({ title }) => (
@@ -62,6 +64,10 @@ function App() {
           <Route path="/auth/signup" element={<Signup />} />
           <Route path="/pricing" element={<Placeholder title="Pricing" />} />
           <Route path="/about" element={<Placeholder title="About" />} />
+
+          {/* Student Portal (Public) */}
+          <Route path="/student" element={<StudentLogin />} />
+          <Route path="/student/dashboard" element={<StudentDashboard />} />
 
           {/* Protected Routes with Layout */}
           <Route
