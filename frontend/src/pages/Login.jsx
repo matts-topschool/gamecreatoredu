@@ -151,6 +151,17 @@ const Login = () => {
                 Sign up for free
               </Link>
             </div>
+
+            {/* Student link */}
+            <div className="mt-4 pt-4 border-t text-center">
+              <Link 
+                to="/student" 
+                className="text-sm text-cyan-600 hover:text-cyan-700 font-medium"
+                data-testid="login-student-link"
+              >
+                Are you a student? Join your class here →
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -133,6 +133,20 @@ const Landing = () => {
             <p className="mt-6 text-sm text-slate-500">
               No credit card required. Free forever for basic use.
             </p>
+
+            {/* Student Quick Access */}
+            <div className="mt-8 pt-6 border-t border-slate-200">
+              <Link to="/student" className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl hover:from-cyan-100 hover:to-blue-100 transition-colors group">
+                <div className="w-10 h-10 rounded-full bg-cyan-600 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-slate-900 group-hover:text-cyan-700 transition-colors">Are you a student?</p>
+                  <p className="text-sm text-slate-600">Join your class with a code</p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-cyan-600 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
           </div>
 
           {/* Hero Image/Preview */}

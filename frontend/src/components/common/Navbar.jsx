@@ -10,7 +10,8 @@ import {
   LogOut, 
   Settings, 
   ChevronDown,
-  Sparkles
+  Sparkles,
+  GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -127,6 +128,19 @@ const Navbar = () => {
 
           {/* Right side - Auth */}
           <div className="flex items-center gap-3">
+            {/* Student Join - Always visible */}
+            <Link to="/student">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="hidden sm:flex items-center gap-1.5 text-cyan-700 border-cyan-200 hover:bg-cyan-50 hover:border-cyan-300"
+                data-testid="nav-student-join"
+              >
+                <GraduationCap className="w-4 h-4" />
+                I'm a Student
+              </Button>
+            </Link>
+            
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
