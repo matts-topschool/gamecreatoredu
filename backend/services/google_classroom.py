@@ -300,7 +300,7 @@ class GoogleClassroomService(IntegrationProvider):
                         "hours": dt.hour,
                         "minutes": dt.minute
                     }
-                except:
+                except Exception:
                     pass
             
             response = await self.http_client.post(
@@ -388,6 +388,19 @@ class GoogleClassroomService(IntegrationProvider):
                 return False
             
             logger.info(f"Submitted grade {assigned_grade} for student {student_id}")
+            
+            # Return the submission to mark it as "Returned/Graded"
+            # This changes the status from "Not turned in" to "Returned"
+            return_response = await self.http_client.post(
+                f"/courses/{course_id}/courseWork/{coursework_id}/studentSubmissions/{submission_id}:return"
+            )
+            
+            if return_response.status_code != 200:
+                # Log but don't fail - grade was set successfully
+                logger.warning(f"Failed to return submission (grade was set): {return_response.text}")
+            else:
+                logger.info(f"Submission returned for student {student_id}")
+            
             return True
             
         except Exception as e:
