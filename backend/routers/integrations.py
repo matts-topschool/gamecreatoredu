@@ -73,6 +73,11 @@ def get_integration_tokens_collection():
     return db["integration_tokens"]
 
 
+def get_games_collection():
+    db = get_database()
+    return db["games"]
+
+
 # ==================== Provider List ====================
 
 @router.get("/providers")
@@ -948,6 +953,69 @@ async def submit_assignment_result(
         "success": True,
         "attempt_id": attempt.id,
         "message": "Result submitted successfully"
+    }
+
+
+@router.get("/class/{class_id}/assignments")
+async def get_class_assignments(
+    class_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get all assignments for a class with their attempt data.
+    """
+    classes = get_classes_collection()
+    assignments_coll = get_assignments_collection()
+    games = get_games_collection()
+    
+    # Verify class ownership
+    class_doc = await classes.find_one(
+        {"id": class_id, "teacher_id": current_user["id"]},
+        {"_id": 0}
+    )
+    
+    if not class_doc:
+        raise HTTPException(status_code=404, detail="Class not found")
+    
+    # Get all assignments for this class
+    cursor = assignments_coll.find(
+        {"class_id": class_id},
+        {"_id": 0}
+    ).sort("created_at", -1)
+    
+    assignment_list = []
+    async for assignment_doc in cursor:
+        # Get game info
+        game = await games.find_one(
+            {"id": assignment_doc["game_id"]},
+            {"_id": 0, "title": 1, "spec": 1}
+        )
+        
+        game_type = game.get("spec", {}).get("meta", {}).get("game_type", "quiz") if game else "quiz"
+        game_title = game.get("title", "Unknown Game") if game else "Unknown Game"
+        
+        assignment_list.append({
+            "id": assignment_doc["id"],
+            "title": assignment_doc["title"],
+            "instructions": assignment_doc.get("instructions"),
+            "game_id": assignment_doc["game_id"],
+            "game_title": game_title,
+            "game_type": game_type,
+            "due_date": assignment_doc.get("due_date"),
+            "points_possible": assignment_doc.get("points_possible", 100),
+            "external_assignment_id": assignment_doc.get("external_assignment_id"),
+            "attempts": assignment_doc.get("attempts", []),
+            "students_completed": assignment_doc.get("students_completed", 0),
+            "average_score": assignment_doc.get("average_score", 0),
+            "average_accuracy": assignment_doc.get("average_accuracy", 0),
+            "created_at": assignment_doc.get("created_at"),
+            "status": assignment_doc.get("status", "active")
+        })
+    
+    return {
+        "class_id": class_id,
+        "class_name": class_doc.get("name"),
+        "assignments": assignment_list
     }
 
 

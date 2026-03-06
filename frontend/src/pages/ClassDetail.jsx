@@ -19,7 +19,12 @@ import {
   Settings,
   CheckCircle,
   UserPlus,
-  MoreVertical
+  MoreVertical,
+  Gamepad2,
+  ClipboardList,
+  PlayCircle,
+  Clock,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -236,6 +241,145 @@ const StudentRow = ({ student, onRemove }) => {
 };
 
 /**
+ * Assignment Card Component
+ */
+const AssignmentCard = ({ assignment, students, onViewDetails }) => {
+  const navigate = useNavigate();
+  
+  // Calculate completion stats
+  const totalStudents = students.length;
+  const attempts = assignment.attempts || [];
+  const uniqueStudentsCompleted = new Set(attempts.map(a => a.student_id)).size;
+  const completionRate = totalStudents > 0 
+    ? Math.round((uniqueStudentsCompleted / totalStudents) * 100) 
+    : 0;
+  
+  // Calculate average score
+  const avgScore = attempts.length > 0
+    ? Math.round(attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attempts.length)
+    : 0;
+  
+  // Calculate average accuracy
+  const avgAccuracy = attempts.length > 0
+    ? Math.round(attempts.reduce((sum, a) => sum + (a.accuracy || 0), 0) / attempts.length)
+    : 0;
+
+  // Due date formatting
+  const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
+  const isOverdue = dueDate && dueDate < new Date();
+  const isDueSoon = dueDate && !isOverdue && (dueDate.getTime() - Date.now()) < 24 * 60 * 60 * 1000;
+
+  return (
+    <div className="border rounded-lg p-4 hover:border-violet-200 hover:shadow-sm transition-all">
+      <div className="flex items-start justify-between gap-4">
+        {/* Left: Assignment info */}
+        <div className="flex items-start gap-3 flex-1">
+          <div className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+            assignment.game_type === 'quiz' && "bg-violet-100",
+            assignment.game_type === 'battle' && "bg-red-100",
+            assignment.game_type === 'adventure' && "bg-emerald-100",
+            !['quiz', 'battle', 'adventure'].includes(assignment.game_type) && "bg-slate-100"
+          )}>
+            <Gamepad2 className={cn(
+              "w-5 h-5",
+              assignment.game_type === 'quiz' && "text-violet-600",
+              assignment.game_type === 'battle' && "text-red-600",
+              assignment.game_type === 'adventure' && "text-emerald-600",
+              !['quiz', 'battle', 'adventure'].includes(assignment.game_type) && "text-slate-600"
+            )} />
+          </div>
+          <div className="min-w-0">
+            <h4 className="font-semibold text-slate-900">{assignment.title}</h4>
+            <p className="text-sm text-muted-foreground">{assignment.game_title}</p>
+            
+            {/* Due date */}
+            {dueDate && (
+              <p className={cn(
+                "text-xs mt-1 flex items-center gap-1",
+                isOverdue && "text-red-600",
+                isDueSoon && !isOverdue && "text-amber-600",
+                !isOverdue && !isDueSoon && "text-muted-foreground"
+              )}>
+                <Clock className="w-3 h-3" />
+                {isOverdue ? 'Overdue: ' : 'Due: '}
+                {dueDate.toLocaleDateString()} at {dueDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Middle: Stats */}
+        <div className="flex items-center gap-6">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Completion</p>
+            <p className={cn(
+              "text-lg font-bold",
+              completionRate >= 80 && "text-emerald-600",
+              completionRate >= 50 && completionRate < 80 && "text-amber-600",
+              completionRate < 50 && "text-slate-600"
+            )}>
+              {uniqueStudentsCompleted}/{totalStudents}
+            </p>
+          </div>
+          
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Avg Score</p>
+            <p className="text-lg font-bold text-slate-900">{avgScore.toLocaleString()}</p>
+          </div>
+          
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Avg Accuracy</p>
+            <p className={cn(
+              "text-lg font-bold",
+              avgAccuracy >= 80 && "text-emerald-600",
+              avgAccuracy >= 60 && avgAccuracy < 80 && "text-amber-600",
+              avgAccuracy < 60 && avgAccuracy > 0 && "text-red-600",
+              avgAccuracy === 0 && "text-slate-400"
+            )}>
+              {avgAccuracy}%
+            </p>
+          </div>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate(`/play/${assignment.game_id}`)}
+          >
+            <PlayCircle className="w-4 h-4 mr-1" />
+            Preview
+          </Button>
+        </div>
+      </div>
+
+      {/* Student progress bar */}
+      {totalStudents > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+            <span>Student completion</span>
+            <span>{completionRate}%</span>
+          </div>
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div 
+              className={cn(
+                "h-full rounded-full transition-all",
+                completionRate >= 80 && "bg-emerald-500",
+                completionRate >= 50 && completionRate < 80 && "bg-amber-500",
+                completionRate < 50 && "bg-slate-400"
+              )}
+              style={{ width: `${completionRate}%` }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
  * Main ClassDetail Page
  */
 const ClassDetail = () => {
@@ -243,13 +387,16 @@ const ClassDetail = () => {
   const navigate = useNavigate();
   
   const [classData, setClassData] = useState(null);
+  const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     loadClass();
+    loadAssignments();
   }, [classId]);
 
   const loadClass = async () => {
@@ -262,6 +409,18 @@ const ClassDetail = () => {
       navigate('/dashboard/classes');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAssignments = async () => {
+    setAssignmentsLoading(true);
+    try {
+      const response = await api.get(`/integrations/class/${classId}/assignments`);
+      setAssignments(response.data.assignments || []);
+    } catch (err) {
+      console.error('Failed to load assignments:', err);
+    } finally {
+      setAssignmentsLoading(false);
     }
   };
 
@@ -460,6 +619,10 @@ const ClassDetail = () => {
             <Users className="w-4 h-4" />
             Students
           </TabsTrigger>
+          <TabsTrigger value="assignments" className="gap-2">
+            <ClipboardList className="w-4 h-4" />
+            Assignments
+          </TabsTrigger>
           <TabsTrigger value="settings" className="gap-2">
             <Settings className="w-4 h-4" />
             Settings
@@ -511,6 +674,52 @@ const ClassDetail = () => {
                     ))}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Assignments Tab */}
+        <TabsContent value="assignments" className="mt-4">
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5" />
+                Assignments ({assignments.length})
+              </CardTitle>
+              <Button onClick={() => navigate('/dashboard/games')} variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Assign a Game
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {assignmentsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : assignments.length === 0 ? (
+                <div className="text-center py-12">
+                  <Gamepad2 className="w-12 h-12 mx-auto text-slate-200 mb-3" />
+                  <p className="text-muted-foreground mb-2">No assignments yet</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Assign a game from your library to get started
+                  </p>
+                  <Button variant="outline" onClick={() => navigate('/dashboard/games')}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Browse Games
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {assignments.map((assignment) => (
+                    <AssignmentCard 
+                      key={assignment.id} 
+                      assignment={assignment}
+                      students={classData?.students || []}
+                      onViewDetails={() => navigate(`/dashboard/assignment/${assignment.id}`)}
+                    />
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
