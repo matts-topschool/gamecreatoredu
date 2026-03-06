@@ -396,7 +396,7 @@ const VictoryScreen = ({ world, score, totalQuestions, correctAnswers, onReplay,
             <RotateCcw className="w-4 h-4 mr-2" />
             Play Again
           </Button>
-          <Button onClick={onExit} variant="outline" className="border-slate-500 text-white hover:bg-white/10">
+          <Button onClick={onExit} className="bg-slate-100 hover:bg-white text-slate-900">
             <Home className="w-4 h-4 mr-2" />
             Exit
           </Button>

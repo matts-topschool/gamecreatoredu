@@ -530,7 +530,7 @@ const VictoryScreen = ({ enemy, score, accuracy, maxCombo, totalDamage, onPlayAg
             <RotateCcw className="w-4 h-4 mr-2" />
             Play Again
           </Button>
-          <Button onClick={onExit} variant="outline" className="border-slate-600">
+          <Button onClick={onExit} className="bg-slate-100 hover:bg-white text-slate-900">
             <Home className="w-4 h-4 mr-2" />
             Exit
           </Button>
@@ -583,7 +583,7 @@ const DefeatScreen = ({ enemy, score, onRetry, onExit }) => {
             <RotateCcw className="w-4 h-4 mr-2" />
             Try Again
           </Button>
-          <Button onClick={onExit} variant="outline" className="border-slate-600">
+          <Button onClick={onExit} className="bg-slate-100 hover:bg-white text-slate-900">
             <Home className="w-4 h-4 mr-2" />
             Exit
           </Button>
