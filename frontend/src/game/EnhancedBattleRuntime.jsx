@@ -611,6 +611,7 @@ const EnhancedBattleRuntime = ({
   const [maxCombo, setMaxCombo] = useState(0);
   const [totalDamage, setTotalDamage] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [questionsAttempted, setQuestionsAttempted] = useState(0);
   
   // Character state
   const [playerHealth, setPlayerHealth] = useState(100);
@@ -685,22 +686,27 @@ const EnhancedBattleRuntime = ({
   useEffect(() => {
     if (enemyHealth <= 0) {
       setGamePhase('victory');
+      // For victories, accuracy = correct answers / questions attempted (not total)
+      // If won in 3 turns with 3 correct = 100% accuracy
+      const actualAttempted = Math.max(questionsAttempted, 1);
       onComplete?.({
         score,
-        accuracy: Math.round((correctAnswers / questions.length) * 100),
+        accuracy: Math.round((correctAnswers / actualAttempted) * 100),
         correctAnswers: correctAnswers,
-        questionsAnswered: questions.length,
+        questionsAnswered: actualAttempted,
         maxCombo,
         totalDamage,
         enemyDefeated: true
       });
     } else if (playerHealth <= 0) {
       setGamePhase('defeat');
+      // For defeats, also use questions actually attempted
+      const actualAttempted = Math.max(questionsAttempted, 1);
       onComplete?.({
         score,
-        accuracy: Math.round((correctAnswers / questions.length) * 100),
+        accuracy: Math.round((correctAnswers / actualAttempted) * 100),
         correctAnswers: correctAnswers,
-        questionsAnswered: questions.length,
+        questionsAnswered: actualAttempted,
         maxCombo,
         totalDamage,
         enemyDefeated: false
@@ -711,6 +717,9 @@ const EnhancedBattleRuntime = ({
   // Handle answer selection
   const handleAnswer = useCallback((selectedOption) => {
     clearTimeout(timerRef.current);
+    
+    // Track that this question was attempted
+    setQuestionsAttempted(q => q + 1);
     
     const isCorrect = selectedOption?.is_correct || false;
     let damage = 0;
@@ -904,7 +913,7 @@ const EnhancedBattleRuntime = ({
           <VictoryScreen 
             enemy={enemyType}
             score={score}
-            accuracy={Math.round((correctAnswers / questions.length) * 100)}
+            accuracy={Math.round((correctAnswers / Math.max(questionsAttempted, 1)) * 100)}
             maxCombo={maxCombo}
             totalDamage={totalDamage}
             onPlayAgain={handleRestart}
