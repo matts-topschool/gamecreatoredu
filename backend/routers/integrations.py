@@ -480,7 +480,7 @@ async def get_valid_google_token(current_user: dict) -> str:
             
             # Refresh if within 5 minutes of expiry
             if expires_at < datetime.now(timezone.utc) + timedelta(minutes=5):
-                logger.info(f"Access token expiring soon, refreshing...")
+                logger.info("Access token expiring soon, refreshing...")
                 access_token = await refresh_google_access_token(token_doc)
         except Exception as e:
             logger.warning(f"Could not parse token expiry: {e}")
@@ -602,7 +602,6 @@ async def sync_google_roster(
     Adds new students, marks removed students as inactive.
     """
     classes = get_classes_collection()
-    tokens = get_integration_tokens_collection()
     
     # Get class
     class_doc = await classes.find_one(
@@ -750,9 +749,9 @@ async def create_assignment(
             access_token = token_doc.get("access_token") or token_doc.get("session_token", "")
             service = get_google_classroom_service(access_token)
             
-            # Build game URL
+            # Build game URL - include assignment context
             frontend_url = os.environ.get("FRONTEND_URL", "https://impl-framework.preview.emergentagent.com")
-            game_url = f"{frontend_url}/play/{request.game_id}?assignment={assignment.id}"
+            game_url = f"{frontend_url}/play/{request.game_id}?assignment={assignment.id}&student=true"
             
             # Create coursework in Google Classroom
             coursework_id = await service.create_assignment(

@@ -37,6 +37,67 @@ def get_student_sessions_collection():
     return db["student_sessions"]
 
 
+def get_integration_tokens_collection():
+    db = get_database()
+    return db["integration_tokens"]
+
+
+async def sync_grade_to_google_classroom(
+    assignment_doc: dict,
+    student_external_id: str,
+    score: float,
+    teacher_id: str
+) -> bool:
+    """
+    Sync a student's grade to Google Classroom.
+    
+    Args:
+        assignment_doc: The assignment document with external_assignment_id
+        student_external_id: Google Classroom student ID
+        score: Grade score (0-100)
+        teacher_id: ID of the teacher who owns the assignment
+    
+    Returns:
+        True if sync was successful, False otherwise
+    """
+    from services.google_classroom import GoogleClassroomService
+    from services.integrations import GradeSubmission
+    
+    tokens = get_integration_tokens_collection()
+    
+    # Get teacher's Google token
+    token_doc = await tokens.find_one(
+        {"user_id": teacher_id, "provider": "google_classroom"},
+        {"_id": 0}
+    )
+    
+    if not token_doc:
+        logger.warning(f"No Google Classroom token for teacher {teacher_id}")
+        return False
+    
+    access_token = token_doc.get("access_token")
+    if not access_token:
+        logger.warning("No access token available")
+        return False
+    
+    # Create the service
+    service = GoogleClassroomService(access_token)
+    
+    # Create grade submission
+    submission = GradeSubmission(
+        student_external_id=student_external_id,
+        assignment_external_id=assignment_doc["external_assignment_id"],
+        score=score / 100,  # Convert 0-100 to 0-1
+        points_earned=score / 100 * assignment_doc.get("points_possible", 100),
+        points_possible=assignment_doc.get("points_possible", 100)
+    )
+    
+    # Submit grade
+    success = await service.submit_grade(submission)
+    
+    return success
+
+
 # ==================== Schemas ====================
 
 class StudentLoginRequest(BaseModel):
@@ -689,12 +750,39 @@ async def submit_assignment_completion(
     
     logger.info(f"Student {student['display_name']} completed assignment {assignment_id} with score {request.score}")
     
+    # Auto-sync grade to Google Classroom if connected
+    grade_synced = False
+    if updated_doc.get("external_assignment_id") and student.get("external_id"):
+        try:
+            grade_synced = await sync_grade_to_google_classroom(
+                assignment_doc=updated_doc,
+                student_external_id=student.get("external_id"),
+                score=request.accuracy,  # Use accuracy as grade (0-100)
+                teacher_id=updated_doc.get("teacher_id")
+            )
+            
+            if grade_synced:
+                # Mark attempt as synced
+                await assignments_coll.update_one(
+                    {"id": assignment_id, "attempts.id": attempt.id},
+                    {
+                        "$set": {
+                            "attempts.$.grade_synced": True,
+                            "attempts.$.grade_synced_at": datetime.now(timezone.utc).isoformat()
+                        }
+                    }
+                )
+                logger.info(f"Grade synced to Google Classroom for {student['display_name']}")
+        except Exception as e:
+            logger.error(f"Failed to sync grade to Google Classroom: {e}")
+    
     return {
         "success": True,
         "attempt_id": attempt.id,
         "score": request.score,
         "accuracy": request.accuracy,
-        "message": "Great job! Your result has been recorded."
+        "grade_synced": grade_synced,
+        "message": "Great job! Your result has been recorded." + (" Grade synced to Google Classroom!" if grade_synced else "")
     }
 
 
