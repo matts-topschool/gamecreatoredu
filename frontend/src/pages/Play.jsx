@@ -1,11 +1,11 @@
 /**
  * Play - Game play page for running games.
  * Renders the game runtime for a specific game.
- * Supports assignment context for students.
+ * Supports both teacher and student modes.
  */
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, AlertCircle, Share2, Trophy } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, Share2, Trophy, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,8 +32,14 @@ const Play = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { currentGame, fetchGame, isLoading } = useGameStore();
+  const { currentGame, fetchGame, isLoading: storeLoading } = useGameStore();
   const { user, isAuthenticated } = useAuthStore();
+  
+  // Local state for student mode
+  const [studentGame, setStudentGame] = useState(null);
+  const [studentAssignment, setStudentAssignment] = useState(null);
+  const [studentLoading, setStudentLoading] = useState(false);
+  const [studentError, setStudentError] = useState(null);
   
   const [gameComplete, setGameComplete] = useState(false);
   const [finalStats, setFinalStats] = useState(null);
@@ -45,13 +51,39 @@ const Play = () => {
   const isStudentMode = searchParams.get('student') === 'true';
   const studentSession = getStudentSession();
 
-  // Load game on mount
+  // Determine if we're in student mode
+  const effectiveStudentMode = isStudentMode && studentSession?.token;
+
+  // Load game based on mode
   useEffect(() => {
-    if (gameId) {
+    if (!gameId) return;
+    
+    if (effectiveStudentMode) {
+      // Student mode - use student API
+      loadStudentGame();
+    } else {
+      // Teacher/normal mode - use store
       fetchGame(gameId);
-      loadLeaderboard();
     }
-  }, [gameId, fetchGame]);
+    loadLeaderboard();
+  }, [gameId, effectiveStudentMode]);
+
+  // Load game for student
+  const loadStudentGame = async () => {
+    setStudentLoading(true);
+    setStudentError(null);
+    
+    try {
+      const response = await api.get(`/student/game/${gameId}?token=${studentSession.token}`);
+      setStudentGame(response.data.game);
+      setStudentAssignment(response.data.assignment);
+    } catch (err) {
+      console.error('Failed to load game for student:', err);
+      setStudentError(err.response?.data?.detail || 'Failed to load game');
+    } finally {
+      setStudentLoading(false);
+    }
+  };
 
   // Load leaderboard
   const loadLeaderboard = async () => {
@@ -62,6 +94,10 @@ const Play = () => {
       // Leaderboard not critical
     }
   };
+
+  // Get the active game (either from store or student state)
+  const activeGame = effectiveStudentMode ? studentGame : currentGame;
+  const isLoading = effectiveStudentMode ? studentLoading : storeLoading;
 
   // Handle game completion
   const handleGameComplete = async (stats) => {
@@ -74,10 +110,10 @@ const Play = () => {
     const accuracy = Math.round((correctAnswers / Math.max(questionsAnswered, 1)) * 100);
     
     // If this is a student assignment, submit to assignment endpoint
-    if (assignmentId && isStudentMode && studentSession?.token) {
+    if (effectiveStudentMode && studentAssignment) {
       try {
         const response = await api.post(
-          `/student/assignment/${assignmentId}/complete?token=${studentSession.token}`,
+          `/student/assignment/${studentAssignment.id}/complete?token=${studentSession.token}`,
           {
             score: score,
             accuracy: accuracy,
@@ -97,9 +133,13 @@ const Play = () => {
     
     // Also submit to general leaderboard
     try {
+      const playerName = effectiveStudentMode 
+        ? studentSession?.student?.display_name 
+        : (user?.display_name || 'Guest Player');
+      
       const result = {
         game_id: gameId,
-        player_name: user?.display_name || studentSession?.student?.display_name || 'Guest Player',
+        player_name: playerName,
         score: score,
         accuracy: accuracy / 100,
         questions_total: questionsAnswered,
@@ -116,13 +156,13 @@ const Play = () => {
       // Reload leaderboard to show new entry
       await loadLeaderboard();
       
-      // Get user's rank
-      if (isAuthenticated) {
+      // Get user's rank (only for teachers)
+      if (isAuthenticated && !effectiveStudentMode) {
         const rankData = await leaderboardService.getMyRank(gameId);
         setMyRank(rankData);
       }
       
-      if (!assignmentId) {
+      if (!effectiveStudentMode) {
         toast.success('Score submitted to leaderboard!');
       }
     } catch (err) {
@@ -130,16 +170,14 @@ const Play = () => {
     }
   };
 
-  // Handle exit
+  // Handle exit - go to appropriate dashboard
   const handleExit = () => {
-    // If student mode, go back to student dashboard
-    if (isStudentMode && studentSession) {
+    if (effectiveStudentMode) {
       navigate('/student/dashboard');
-      return;
+    } else {
+      const from = location.state?.from || '/dashboard';
+      navigate(from);
     }
-    
-    const from = location.state?.from || '/dashboard';
-    navigate(from);
   };
 
   // Share game
@@ -149,8 +187,8 @@ const Play = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: currentGame?.title || 'Play this game!',
-          text: currentGame?.description || 'Check out this educational game!',
+          title: activeGame?.title || 'Play this game!',
+          text: activeGame?.description || 'Check out this educational game!',
           url
         });
       } catch (err) {
@@ -174,8 +212,27 @@ const Play = () => {
     );
   }
 
+  // Error state for students
+  if (effectiveStudentMode && studentError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">Cannot Access Game</h2>
+            <p className="text-muted-foreground mb-6">{studentError}</p>
+            <Button onClick={() => navigate('/student/dashboard')}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to My Assignments
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Not found
-  if (!currentGame && !isLoading) {
+  if (!activeGame && !isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
         <Card className="max-w-md w-full">
@@ -185,9 +242,9 @@ const Play = () => {
             <p className="text-muted-foreground mb-6">
               The game you're looking for doesn't exist or you don't have access to it.
             </p>
-            <Button onClick={() => navigate('/dashboard')}>
+            <Button onClick={handleExit}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              {effectiveStudentMode ? 'Back to Assignments' : 'Back to Dashboard'}
             </Button>
           </CardContent>
         </Card>
@@ -196,7 +253,7 @@ const Play = () => {
   }
 
   // Check if game has a valid spec
-  if (!currentGame?.spec || !currentGame?.spec?.content?.questions?.length) {
+  if (!activeGame?.spec || !activeGame?.spec?.content?.questions?.length) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
         <Card className="max-w-md w-full">
@@ -204,22 +261,34 @@ const Play = () => {
             <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Game Not Ready</h2>
             <p className="text-muted-foreground mb-6">
-              This game doesn't have any questions yet. Please edit the game to add content.
+              {effectiveStudentMode 
+                ? "This game isn't ready yet. Please contact your teacher."
+                : "This game doesn't have any questions yet. Please edit the game to add content."}
             </p>
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={() => navigate('/studio')}>
+              <Button variant="outline" onClick={handleExit}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Studio
+                {effectiveStudentMode ? 'Back to Assignments' : 'Back to Studio'}
               </Button>
-              <Button onClick={() => navigate(`/studio/${gameId}`)}>
-                Edit Game
-              </Button>
+              {!effectiveStudentMode && (
+                <Button onClick={() => navigate(`/studio/${gameId}`)}>
+                  Edit Game
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
     );
   }
+
+  const playerName = effectiveStudentMode 
+    ? studentSession?.student?.display_name 
+    : (user?.display_name || 'Player');
+  
+  const playerId = effectiveStudentMode
+    ? studentSession?.student?.id
+    : user?.id;
 
   return (
     <div className="min-h-screen bg-slate-100" data-testid="play-page">
@@ -236,17 +305,27 @@ const Play = () => {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="font-semibold text-foreground">{currentGame?.title}</h1>
-              <p className="text-xs text-muted-foreground">
-                {currentGame?.spec?.content?.questions?.length || 0} questions
-              </p>
+              <h1 className="font-semibold text-foreground">{activeGame?.title}</h1>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {activeGame?.spec?.content?.questions?.length || 0} questions
+                </p>
+                {effectiveStudentMode && studentAssignment && (
+                  <Badge variant="secondary" className="text-xs">
+                    <GraduationCap className="w-3 h-3 mr-1" />
+                    {studentAssignment.points_possible} pts
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
           
-          <Button variant="outline" size="sm" onClick={handleShare}>
-            <Share2 className="w-4 h-4 mr-2" />
-            Share
-          </Button>
+          {!effectiveStudentMode && (
+            <Button variant="outline" size="sm" onClick={handleShare}>
+              <Share2 className="w-4 h-4 mr-2" />
+              Share
+            </Button>
+          )}
         </div>
       </div>
 
@@ -256,17 +335,17 @@ const Play = () => {
           {/* Game Area */}
           <div className="lg:col-span-2">
             <GameRuntimeSelector
-              spec={currentGame?.spec}
+              spec={activeGame?.spec}
               onComplete={handleGameComplete}
               onExit={handleExit}
-              playerId={user?.id}
-              playerName={user?.display_name || 'Player'}
+              playerId={playerId}
+              playerName={playerName}
               fallbackToQuiz={true}
               useEnhancedGraphics={true}
-              theme={currentGame?.spec?.battle_visuals?.theme || 'fantasy_castle'}
-              playerCharacter={currentGame?.spec?.battle_visuals?.playerCharacter || 'knight'}
-              enemyType={currentGame?.spec?.battle_visuals?.enemyType || 'orc'}
-              adventureWorld={currentGame?.spec?.adventure_visuals?.world || 'pirate_voyage'}
+              theme={activeGame?.spec?.battle_visuals?.theme || 'fantasy_castle'}
+              playerCharacter={activeGame?.spec?.battle_visuals?.playerCharacter || 'knight'}
+              enemyType={activeGame?.spec?.battle_visuals?.enemyType || 'orc'}
+              adventureWorld={activeGame?.spec?.adventure_visuals?.world || 'pirate_voyage'}
             />
           </div>
           
@@ -274,8 +353,8 @@ const Play = () => {
           <div className="space-y-4">
             <Leaderboard gameId={gameId} limit={10} />
             
-            {/* My Rank */}
-            {myRank?.has_played && (
+            {/* My Rank - only for teachers */}
+            {!effectiveStudentMode && myRank?.has_played && (
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">

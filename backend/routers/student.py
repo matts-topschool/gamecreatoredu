@@ -260,6 +260,64 @@ async def verify_student_session(
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
+# ==================== Student Game Access ====================
+
+@router.get("/game/{game_id}")
+async def get_game_for_student(
+    game_id: str,
+    token: str = Query(..., description="Student session token")
+):
+    """
+    Get a game for student play.
+    Only allows access if the student has an assignment for this game.
+    """
+    from core.security import decode_token
+    
+    # Verify token
+    try:
+        payload = decode_token(token)
+        if payload.get("type") != "student":
+            raise HTTPException(status_code=401, detail="Invalid student token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    class_id = payload.get("class_id")
+    
+    assignments_coll = get_assignments_collection()
+    games = get_games_collection()
+    
+    # Check if student has an assignment for this game
+    assignment = await assignments_coll.find_one({
+        "class_id": class_id,
+        "game_id": game_id,
+        "status": {"$in": ["active", "completed"]}
+    }, {"_id": 0})
+    
+    if not assignment:
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have access to this game. Please check your assignments."
+        )
+    
+    # Get the game
+    game = await games.find_one({"id": game_id}, {"_id": 0})
+    
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    
+    # Return game with assignment context
+    return {
+        "game": game,
+        "assignment": {
+            "id": assignment["id"],
+            "title": assignment["title"],
+            "instructions": assignment.get("instructions"),
+            "points_possible": assignment.get("points_possible", 100),
+            "due_date": assignment.get("due_date")
+        }
+    }
+
+
 # ==================== Student Dashboard ====================
 
 @router.get("/dashboard")
