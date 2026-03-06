@@ -596,6 +596,7 @@ const EnhancedAdventureRuntime = ({
       score,
       accuracy: Math.round((correctAnswers / questions.length) * 100),
       correctAnswers,
+      questionsAnswered: questions.length,
       totalQuestions: questions.length
     });
   }, [score, correctAnswers, questions.length, onComplete]);

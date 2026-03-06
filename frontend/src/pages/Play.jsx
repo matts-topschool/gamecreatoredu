@@ -105,9 +105,13 @@ const Play = () => {
     setFinalStats(stats);
     
     const score = stats.score || 0;
-    const questionsAnswered = stats.questionsAnswered || 1;
+    const questionsAnswered = stats.questionsAnswered || stats.totalQuestions || 1;
     const correctAnswers = stats.correctAnswers || 0;
-    const accuracy = Math.round((correctAnswers / Math.max(questionsAnswered, 1)) * 100);
+    
+    // Use pre-calculated accuracy if available, otherwise calculate
+    const accuracy = stats.accuracy !== undefined 
+      ? stats.accuracy 
+      : Math.round((correctAnswers / Math.max(questionsAnswered, 1)) * 100);
     
     // If this is a student assignment, submit to assignment endpoint
     if (effectiveStudentMode && studentAssignment) {

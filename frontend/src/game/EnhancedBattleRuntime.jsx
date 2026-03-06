@@ -688,11 +688,23 @@ const EnhancedBattleRuntime = ({
       onComplete?.({
         score,
         accuracy: Math.round((correctAnswers / questions.length) * 100),
+        correctAnswers: correctAnswers,
+        questionsAnswered: questions.length,
         maxCombo,
-        totalDamage
+        totalDamage,
+        enemyDefeated: true
       });
     } else if (playerHealth <= 0) {
       setGamePhase('defeat');
+      onComplete?.({
+        score,
+        accuracy: Math.round((correctAnswers / questions.length) * 100),
+        correctAnswers: correctAnswers,
+        questionsAnswered: questions.length,
+        maxCombo,
+        totalDamage,
+        enemyDefeated: false
+      });
     }
   }, [enemyHealth, playerHealth]);
   
