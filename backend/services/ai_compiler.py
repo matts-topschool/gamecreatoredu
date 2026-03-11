@@ -4,7 +4,9 @@ Supports flexible game types with distinct mechanics for each type.
 """
 import os
 import json
+import random
 import logging
+from collections import Counter
 from typing import Optional, AsyncGenerator
 from dotenv import load_dotenv
 
@@ -27,13 +29,13 @@ For QUIZ games:
     "battle": """
 For BATTLE games:
 - Create a compelling enemy/boss character related to the topic (e.g., "Fraction Fiend", "Grammar Goblin")
-- enemy.health should start at 100
+- DO NOT set enemy.health.max — it will be calculated automatically based on question count
 - Correct answers deal damage (base 10 + speed bonus + combo bonus)
-- Faster answers = more damage
-- Combo system: consecutive correct answers multiply damage
+- Answers within 15 seconds earn speed bonus damage
+- Combo system: consecutive correct answers add bonus damage
 - Include battle-themed feedback ("Critical hit!", "The monster staggers!")
-- Victory when enemy health reaches 0
-- Player can take damage on wrong answers (optional lives system)
+- Victory when enemy health reaches 0. Player loses if they take too many wrong answers.
+- Generate TWO sets of taunt messages: taunt_messages (normal, >50% HP) and taunt_messages_low_hp (desperate, <30% HP)
 """,
     "adventure": """
 For ADVENTURE games:
@@ -143,10 +145,10 @@ FOR BATTLE GAMES - ADD THIS STRUCTURE:
   },
   "battle_config": {
     "damage_per_correct": 10,
-    "bonus_damage_per_combo": 5,
-    "speed_bonus_threshold_seconds": 5,
+    "bonus_damage_per_combo": 4,
+    "speed_bonus_threshold_seconds": 15,
     "speed_bonus_damage": 5,
-    "player_damage_on_wrong": 10
+    "player_damage_on_wrong": 20
   }
 }
 
@@ -154,10 +156,27 @@ QUALITY GUIDELINES:
 1. Questions must be grade-appropriate and clearly worded
 2. All 4 answer options should be plausible (no obvious jokes)
 3. Explanations should teach, not just say "that's correct"
-4. Difficulty should progress gradually
+4. Difficulty should progress gradually (easy first, hard at 60-80% through)
 5. Hints should guide without giving away the answer
 6. For battle games, make the enemy character FUN and THEMATIC
 7. Generate the exact number of questions requested
+
+ANSWER PLACEMENT RULES (CRITICAL):
+- The correct answer position (a/b/c/d) will be specified per question — YOU MUST follow it exactly
+- Do NOT default the correct answer to option b or c
+- Place the correct answer ONLY at the position specified in each question's instruction
+
+DISTRACTOR QUALITY RULES:
+- NEVER use "all of the above" or "none of the above"
+- Distractors must reflect real student misconceptions, not nonsense
+- For numeric answers: distractors must be close in value (e.g., if correct=24, use 22, 26, 28 — not 100)
+- For verbal answers: distractors must share domain vocabulary with the correct answer
+- Every option must be a similar length and grammatical form as the correct answer
+
+QUESTION DIVERSITY RULES:
+- No two questions may start with the same word
+- Mix cognitive depth across the set: recall, comprehension, and application questions
+- Avoid repeating the same concept across multiple questions
 
 OUTPUT ONLY VALID JSON. NO OTHER TEXT."""
 
@@ -216,7 +235,13 @@ class AICompiler:
             
             spec = self._parse_response(response)
             spec = self._validate_and_enhance(spec, game_type)
-            
+
+            # Shuffle options and validate distribution
+            questions = spec.get("content", {}).get("questions", [])
+            if questions:
+                self._shuffle_question_options(questions)
+                self._validate_answer_distribution(questions)
+
             logger.info(f"Successfully compiled: {spec.get('meta', {}).get('title', 'Unknown')}")
             return spec
             
@@ -258,25 +283,41 @@ class AICompiler:
     ) -> list[dict]:
         """Generate additional questions for an existing game."""
         
+        position_instructions = self._build_answer_position_instructions(count)
+
         prompt = f"""Generate {count} {question_type} questions about "{topic}" for grade {grade_level}.
 Difficulty: {difficulty}/5
 
+{position_instructions}
+
+DISTRACTOR RULES:
+- No "all of the above" or "none of the above"
+- Distractors must reflect common student misconceptions
+- For numeric answers: distractors must be numerically close to the correct value
+- All options must be similar in length and grammatical form
+- No two questions may start with the same word
+
 Output as JSON array:
-[{{"id": "q1", "type": "{question_type}", "stem": "Question?", "options": [{{"id": "a", "text": "Option", "is_correct": false}}, ...], "explanation": "Why correct", "difficulty": {difficulty}, "hints": ["Hint"]}}]
+[{{"id": "q1", "type": "{question_type}", "stem": "Question?", "options": [{{"id": "a", "text": "Option", "is_correct": false}}, {{"id": "b", "text": "Option", "is_correct": false}}, {{"id": "c", "text": "Option", "is_correct": false}}, {{"id": "d", "text": "Option", "is_correct": false}}], "explanation": "Why correct", "difficulty": {difficulty}, "hints": ["Hint"]}}]
 
 JSON ONLY."""
 
         chat = self._get_chat("questions")
         response = await chat.send_message(UserMessage(text=prompt))
-        
+
         try:
-            return json.loads(response)
+            questions = json.loads(response)
         except json.JSONDecodeError:
             import re
             match = re.search(r'\[[\s\S]*\]', response)
             if match:
-                return json.loads(match.group())
-            raise ValueError("Failed to parse questions")
+                questions = json.loads(match.group())
+            else:
+                raise ValueError("Failed to parse questions")
+
+        self._shuffle_question_options(questions)
+        self._validate_answer_distribution(questions)
+        return questions
     
     async def refine_spec(
         self,
@@ -297,7 +338,14 @@ Output the COMPLETE updated GameSpec as valid JSON only."""
 
         chat = self._get_chat("refine")
         response = await chat.send_message(UserMessage(text=prompt))
-        return self._parse_response(response)
+        spec = self._parse_response(response)
+
+        questions = spec.get("content", {}).get("questions", [])
+        if questions:
+            self._shuffle_question_options(questions)
+            self._validate_answer_distribution(questions)
+
+        return spec
     
     def _build_prompt(
         self,
@@ -327,8 +375,9 @@ Output the COMPLETE updated GameSpec as valid JSON only."""
         
         parts.append(f"\nGenerate EXACTLY {question_count} questions")
         parts.append(f"Target duration: {duration_minutes} minutes")
+        parts.append(f"\n{self._build_answer_position_instructions(question_count)}")
         parts.append("\nOutput ONLY valid JSON GameSpec. No markdown or explanations.")
-        
+
         return "\n".join(parts)
     
     def _parse_response(self, response: str) -> dict:
@@ -360,6 +409,79 @@ Output the COMPLETE updated GameSpec as valid JSON only."""
         
         raise ValueError(f"Could not parse JSON: {response[:500]}...")
     
+    def _build_answer_position_instructions(self, question_count: int) -> str:
+        """
+        Generate per-question correct-answer position assignments.
+        Distributes A/B/C/D evenly across the question set so the LLM cannot
+        default to a favourite position (typically B or C).
+        """
+        positions = ['a', 'b', 'c', 'd']
+        # Build a balanced sequence: repeat the shuffled set, then trim to length
+        balanced = []
+        while len(balanced) < question_count:
+            chunk = positions[:]
+            random.shuffle(chunk)
+            balanced.extend(chunk)
+        balanced = balanced[:question_count]
+
+        lines = ["REQUIRED CORRECT ANSWER POSITIONS (you MUST follow these exactly):"]
+        for i, pos in enumerate(balanced, start=1):
+            lines.append(f"  Question {i} (id: q{i}): correct answer MUST be option '{pos}'")
+        return "\n".join(lines)
+
+    def _shuffle_question_options(self, questions: list[dict]) -> list[dict]:
+        """
+        Post-generation shuffle of each question's options array.
+        This is a hard guarantee — regardless of what the LLM produced,
+        the correct answer will end up at a random position.
+        """
+        for question in questions:
+            options = question.get("options", [])
+            if not options:
+                continue
+            random.shuffle(options)
+            # Re-label ids a/b/c/d in shuffled order
+            labels = ['a', 'b', 'c', 'd']
+            for idx, option in enumerate(options):
+                if idx < len(labels):
+                    option['id'] = labels[idx]
+            question['options'] = options
+        return questions
+
+    def _validate_answer_distribution(self, questions: list[dict]) -> dict:
+        """
+        Check how evenly correct answers are spread across A/B/C/D.
+        Returns a report dict. Logs a warning if any position is over-represented.
+        """
+        correct_positions = []
+        for q in questions:
+            for opt in q.get("options", []):
+                if opt.get("is_correct"):
+                    correct_positions.append(opt.get("id", "?"))
+                    break
+
+        counts = Counter(correct_positions)
+        total = len(correct_positions)
+        expected = total / 4 if total else 1
+        max_deviation = max((abs(counts.get(p, 0) - expected) for p in ['a', 'b', 'c', 'd']), default=0)
+
+        report = {
+            "total_questions": total,
+            "distribution": dict(counts),
+            "max_deviation_from_uniform": round(max_deviation, 2),
+            "is_balanced": max_deviation <= max(2, total * 0.2)
+        }
+
+        if not report["is_balanced"]:
+            logger.warning(
+                f"Answer distribution imbalanced after shuffle: {counts}. "
+                f"Max deviation: {max_deviation:.1f} from expected {expected:.1f}"
+            )
+        else:
+            logger.info(f"Answer distribution: {dict(counts)} (balanced)")
+
+        return report
+
     def _validate_and_enhance(self, spec: dict, game_type: str = None) -> dict:
         """Validate spec and add missing required fields."""
         
@@ -395,20 +517,36 @@ Output the COMPLETE updated GameSpec as valid JSON only."""
         spec["settings"].setdefault("show_explanation", True)
         spec["settings"].setdefault("leaderboard", {"enabled": True, "type": "score"})
         
-        # For battle games, ensure entities exist
+        # For battle games, ensure entities exist with scaled HP
         if spec["meta"].get("game_type") == "battle":
+            question_count = len(spec.get("content", {}).get("questions", []))
+            scaled_hp = max(60, question_count * 8)
+
             spec.setdefault("entities", {})
             spec["entities"].setdefault("enemy", {
                 "id": "boss",
                 "name": "Knowledge Monster",
-                "health": {"max": 100, "current": 100}
+                "health": {"max": scaled_hp, "current": scaled_hp}
             })
+            # If HP was hardcoded to 100 (the AI default), override with scaled value
+            enemy_hp = spec["entities"].get("enemy", {}).get("health", {})
+            if enemy_hp.get("max", 0) == 100 and question_count > 0:
+                enemy_hp["max"] = scaled_hp
+                enemy_hp["current"] = scaled_hp
+
             spec.setdefault("battle_config", {
                 "damage_per_correct": 10,
-                "bonus_damage_per_combo": 5,
-                "speed_bonus_threshold_seconds": 5,
-                "speed_bonus_damage": 5
+                "bonus_damage_per_combo": 4,
+                "speed_bonus_threshold_seconds": 15,
+                "speed_bonus_damage": 5,
+                "player_damage_on_wrong": 20
             })
+            # Fix any bad defaults the AI generated
+            cfg = spec["battle_config"]
+            if cfg.get("speed_bonus_threshold_seconds", 99) < 8:
+                cfg["speed_bonus_threshold_seconds"] = 15
+            if cfg.get("player_damage_on_wrong", 0) < 15:
+                cfg["player_damage_on_wrong"] = 20
         
         return spec
 

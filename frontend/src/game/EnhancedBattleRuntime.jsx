@@ -637,11 +637,13 @@ const EnhancedBattleRuntime = ({
   const battleConfig = React.useMemo(() => {
     const rawConfig = spec?.battle_config || {};
     return {
-      damage_per_correct: Number(rawConfig.damage_per_correct) || 25,
-      bonus_damage_per_combo: Number(rawConfig.bonus_damage_per_combo) || 5,
-      speed_bonus_threshold_seconds: Number(rawConfig.speed_bonus_threshold_seconds) || 5,
+      damage_per_correct: Number(rawConfig.damage_per_correct) || 10,
+      bonus_damage_per_combo: Number(rawConfig.bonus_damage_per_combo) || 4,
+      // Minimum 8s — never reward guessing over reading
+      speed_bonus_threshold_seconds: Math.max(8, Number(rawConfig.speed_bonus_threshold_seconds) || 15),
       speed_bonus_damage: Number(rawConfig.speed_bonus_damage) || 5,
-      player_damage_on_wrong: Number(rawConfig.player_damage_on_wrong) || 10,
+      // Minimum 15 so defeat is achievable (5 wrong answers = defeat at 100 HP)
+      player_damage_on_wrong: Math.max(15, Number(rawConfig.player_damage_on_wrong) || 20),
       timer_per_round: Number(rawConfig.timer_per_round) || 30,
       rounds: Number(rawConfig.rounds) || questions.length
     };
@@ -655,7 +657,16 @@ const EnhancedBattleRuntime = ({
   }, [gamePhase, battleConfig.timer_per_round]);
   
   const enemyData = spec?.entities?.enemy || ENEMIES[enemyType];
-  const maxEnemyHealth = enemyData?.health?.max || 100;
+  const maxEnemyHealth = React.useMemo(() => {
+    const specHp = spec?.entities?.enemy?.health?.max;
+    // Use spec HP if explicitly set and not the generic default of 100
+    if (specHp && specHp !== 100) return specHp;
+    // Fall back to catalog HP (catalog has enemy-appropriate values: goblin=60, dragon=150, etc.)
+    const catalogHp = ENEMIES[enemyType]?.health;
+    if (catalogHp) return catalogHp;
+    // Scale to question count as last resort
+    return Math.max(60, questions.length * 8);
+  }, [spec?.entities?.enemy?.health?.max, enemyType, questions.length]);
   
   const currentQuestion = questions[currentQuestionIndex];
   
@@ -758,7 +769,17 @@ const EnhancedBattleRuntime = ({
       // Player takes damage
       setCombo(0);
       setPlayerHealth(h => Math.max(0, h - battleConfig.player_damage_on_wrong));
-      setEnemyTaunt(getRandomTaunt(ENEMIES[enemyType]?.tauntStyle || 'mocking'));
+      // Phase-aware taunts: desperate when enemy HP is low
+      const hpPercent = enemyHealth / maxEnemyHealth;
+      const lowHpTaunts = spec?.entities?.enemy?.taunt_messages_low_hp;
+      const normalTaunts = spec?.entities?.enemy?.taunt_messages;
+      if (hpPercent < 0.3 && lowHpTaunts?.length) {
+        setEnemyTaunt(lowHpTaunts[Math.floor(Math.random() * lowHpTaunts.length)]);
+      } else if (normalTaunts?.length) {
+        setEnemyTaunt(normalTaunts[Math.floor(Math.random() * normalTaunts.length)]);
+      } else {
+        setEnemyTaunt(getRandomTaunt(ENEMIES[enemyType]?.tauntStyle || 'mocking'));
+      }
       setTimeout(() => setEnemyTaunt(null), 2000);
     }
     

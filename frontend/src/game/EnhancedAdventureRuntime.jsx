@@ -155,29 +155,40 @@ const NPCDialogue = ({ npc, message, onContinue, showContinue = true }) => {
   const npcData = getNpcById(npc);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
-  
+  const timerRef = useRef(null);
+
   // Typewriter effect
   useEffect(() => {
     setDisplayedText('');
     setIsTyping(true);
     let index = 0;
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       if (index < message.length) {
         setDisplayedText(message.slice(0, index + 1));
         index++;
       } else {
         setIsTyping(false);
-        clearInterval(timer);
+        clearInterval(timerRef.current);
       }
     }, 30);
-    return () => clearInterval(timer);
+    return () => clearInterval(timerRef.current);
   }, [message]);
-  
+
+  // Click anywhere on the dialogue box to instantly complete typing
+  const handleSkipTyping = () => {
+    if (isTyping) {
+      clearInterval(timerRef.current);
+      setDisplayedText(message);
+      setIsTyping(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-slate-900/90 backdrop-blur-sm rounded-xl p-4 border border-slate-700"
+      className="bg-slate-900/90 backdrop-blur-sm rounded-xl p-4 border border-slate-700 cursor-pointer"
+      onClick={handleSkipTyping}
     >
       <div className="flex items-start gap-3">
         {/* NPC Avatar */}
@@ -319,7 +330,8 @@ const FeedbackOverlay = ({ isCorrect, npc, onContinue, artifactPiece }) => {
 
 // ==================== VICTORY SCREEN ====================
 
-const VictoryScreen = ({ world, score, totalQuestions, correctAnswers, onReplay, onExit }) => {
+const VictoryScreen = ({ world, score, totalQuestions, correctAnswers, questionsAttempted, onReplay, onExit }) => {
+  const denominator = Math.max(questionsAttempted || 0, totalQuestions, 1);
   const worldData = getWorldById(world);
   
   useEffect(() => {
@@ -382,12 +394,12 @@ const VictoryScreen = ({ world, score, totalQuestions, correctAnswers, onReplay,
           <div className="p-3 bg-black/30 rounded-xl">
             <p className="text-sm text-slate-400">Accuracy</p>
             <p className="text-2xl font-bold text-green-400">
-              {Math.round((correctAnswers / totalQuestions) * 100)}%
+              {Math.round((correctAnswers / denominator) * 100)}%
             </p>
           </div>
           <div className="p-3 bg-black/30 rounded-xl">
             <p className="text-sm text-slate-400">Questions</p>
-            <p className="text-2xl font-bold text-amber-400">{correctAnswers}/{totalQuestions}</p>
+            <p className="text-2xl font-bold text-amber-400">{correctAnswers}/{denominator}</p>
           </div>
         </div>
         
@@ -508,18 +520,22 @@ const EnhancedAdventureRuntime = ({
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
   const [currentQuestionInScene, setCurrentQuestionInScene] = useState(0);
   const [globalQuestionIndex, setGlobalQuestionIndex] = useState(0);
-  
+
   // Stats
   const [score, setScore] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [questionsAttempted, setQuestionsAttempted] = useState(0);
   const [collectedPieces, setCollectedPieces] = useState([]);
-  
+
   // UI state
   const [lastAnswerCorrect, setLastAnswerCorrect] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
-  
+  const [wrongAttempts, setWrongAttempts] = useState(0); // per-question retry counter
+
   const currentScene = scenes[currentSceneIndex];
-  const currentQuestion = questions[globalQuestionIndex];
+  // Crash guard: clamp index so we never read undefined
+  const safeQuestionIndex = Math.min(globalQuestionIndex, Math.max(0, questions.length - 1));
+  const currentQuestion = questions[safeQuestionIndex];
   const SceneBackground = getAdventureScene(world, currentScene?.id);
   const npcId = currentScene?.npc;
   const npcData = getNpcById(npcId);
@@ -538,20 +554,30 @@ const EnhancedAdventureRuntime = ({
     const isCorrect = option.is_correct;
     setLastAnswerCorrect(isCorrect);
     setShowFeedback(true);
-    
+    setQuestionsAttempted(n => n + 1);
+
     if (isCorrect) {
-      setScore(s => s + 100);
+      // Attempt-weighted scoring: first attempt=100, second=50, third+=25
+      const points = wrongAttempts === 0 ? 100 : wrongAttempts === 1 ? 50 : 25;
+      setScore(s => s + points);
       setCorrectAnswers(c => c + 1);
+      setWrongAttempts(0); // reset for next question
+    } else {
+      setWrongAttempts(n => n + 1);
     }
-  }, []);
+  }, [wrongAttempts]);
   
   // Handle continuing after feedback
   const handleContinueFeedback = useCallback(() => {
     setShowFeedback(false);
-    
+
     if (!lastAnswerCorrect) {
-      // Wrong answer - stay on same question
-      return;
+      // After 2 wrong attempts, reveal the answer and advance anyway (prevent infinite loops)
+      if (wrongAttempts < 2) {
+        return; // Let them try again
+      }
+      // 3rd+ wrong: fall through and advance — student has seen the explanation
+      setWrongAttempts(0);
     }
     
     const nextQuestionInScene = currentQuestionInScene + 1;
@@ -592,14 +618,15 @@ const EnhancedAdventureRuntime = ({
   // Handle assembly complete
   const handleAssemblyComplete = useCallback(() => {
     setGamePhase('victory');
+    const attempted = Math.max(questionsAttempted, 1);
     onComplete?.({
       score,
-      accuracy: Math.round((correctAnswers / questions.length) * 100),
+      accuracy: Math.round((correctAnswers / attempted) * 100),
       correctAnswers,
-      questionsAnswered: questions.length,
+      questionsAnswered: attempted,
       totalQuestions: questions.length
     });
-  }, [score, correctAnswers, questions.length, onComplete]);
+  }, [score, correctAnswers, questionsAttempted, questions.length, onComplete]);
   
   // Handle restart
   const handleRestart = useCallback(() => {
@@ -609,9 +636,11 @@ const EnhancedAdventureRuntime = ({
     setGlobalQuestionIndex(0);
     setScore(0);
     setCorrectAnswers(0);
+    setQuestionsAttempted(0);
     setCollectedPieces([]);
     setLastAnswerCorrect(null);
     setShowFeedback(false);
+    setWrongAttempts(0);
   }, []);
 
   return (
@@ -713,11 +742,12 @@ const EnhancedAdventureRuntime = ({
       
       {/* Victory screen */}
       {gamePhase === 'victory' && (
-        <VictoryScreen 
+        <VictoryScreen
           world={world}
           score={score}
           totalQuestions={questions.length}
           correctAnswers={correctAnswers}
+          questionsAttempted={questionsAttempted}
           onReplay={handleRestart}
           onExit={onExit}
         />

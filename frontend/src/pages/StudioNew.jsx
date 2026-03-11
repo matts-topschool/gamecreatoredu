@@ -36,6 +36,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 import useGameStore from '@/stores/gameStore';
 import api from '@/services/api';
+import { createFaultLineDemo } from '@/services/agentService';
 import { toast } from 'sonner';
 import ThemeSelector from '@/game/ThemeSelector';
 import AdventureWorldSelector from '@/game/AdventureWorldSelector';
@@ -126,6 +127,9 @@ const StudioNew = () => {
   const [compiledSpec, setCompiledSpec] = useState(null);
   const [compilationError, setCompilationError] = useState(null);
   const [activeTab, setActiveTab] = useState('prompt');
+
+  // Demo creation state
+  const [isCreatingDemo, setIsCreatingDemo] = useState(false);
 
   // Battle customization state
   const [selectedTheme, setSelectedTheme] = useState('fantasy_castle');
@@ -304,6 +308,27 @@ const StudioNew = () => {
     if (example.subjects[0]) setSubject(example.subjects[0]);
     if (example.grades[0]) setGradeLevel(example.grades[0].toString());
     if (example.type) setGameType(example.type);
+  };
+
+  // Create Fault Line demo game
+  const handleCreateFaultLine = async () => {
+    setIsCreatingDemo(true);
+    try {
+      const result = await createFaultLineDemo();
+      if (result.success) {
+        if (result.already_existed) {
+          toast.info('Fault Line is already in your library.');
+          navigate(`/studio/${result.game_id}`);
+        } else {
+          toast.success('Fault Line created! Opening editor...');
+          navigate(`/studio/${result.game_id}`);
+        }
+      }
+    } catch (error) {
+      toast.error('Failed to create demo game. Is the backend running?');
+    } finally {
+      setIsCreatingDemo(false);
+    }
   };
 
   return (
@@ -518,11 +543,50 @@ const StudioNew = () => {
 
             {/* Examples Sidebar */}
             <div className="space-y-4">
+              {/* Ideator's Pick — Fault Line */}
+              <div className="flex items-center gap-2 text-sm font-medium text-violet-600">
+                <Sparkles className="w-4 h-4" />
+                Ideator's Pick
+              </div>
+              <Card className="border-violet-200 bg-gradient-to-br from-violet-50 to-orange-50 dark:from-violet-950/30 dark:to-orange-950/30">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-foreground">Fault Line</h3>
+                    <Badge className="text-xs bg-violet-600">battle</Badge>
+                    <Badge variant="outline" className="text-xs">Grades 7–10</Badge>
+                  </div>
+                  <p className="text-xs text-orange-700 dark:text-orange-400 font-medium mb-2">
+                    ELA • Critical Thinking • Media Literacy
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Logical fallacies take physical form as geological monsters. Identify the flawed argument to defeat each creature before the volcano erupts. 15 questions, pre-built.
+                  </p>
+                  <Button
+                    size="sm"
+                    className="w-full bg-violet-600 hover:bg-violet-700"
+                    onClick={handleCreateFaultLine}
+                    disabled={isCreatingDemo}
+                  >
+                    {isCreatingDemo ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3 h-3 mr-2" />
+                        Add to My Games
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <Lightbulb className="w-4 h-4" />
                 Example Prompts
               </div>
-              
+
               {examplePrompts.map((example, index) => (
                 <Card 
                   key={index}

@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from core.security import get_current_user
 from core.database import get_database
 from services.ai_compiler import get_ai_compiler
+from services.game_mechanics_agent import get_mechanics_agent
 from models.compilation_task import (
     CompilationTask, 
     CompilationTaskCreate, 
@@ -63,7 +64,7 @@ async def run_compilation_task(task_id: str, user_id: str, request_data: dict):
         )
         
         compiler = get_ai_compiler()
-        
+
         spec = await compiler.compile_game(
             prompt=request_data["prompt"],
             grade_levels=request_data.get("grade_levels"),
@@ -72,7 +73,22 @@ async def run_compilation_task(task_id: str, user_id: str, request_data: dict):
             question_count=request_data.get("question_count", 10),
             duration_minutes=request_data.get("duration_minutes", 15)
         )
-        
+
+        # Run mechanics agent to fix balance issues before storing
+        try:
+            mechanics = get_mechanics_agent()
+            mechanics_result = await mechanics.audit_and_fix(spec, auto_fix=True)
+            spec = mechanics_result["fixed_spec"]
+            mechanics_report = mechanics_result.get("audit_report", {})
+            if mechanics_result.get("was_modified"):
+                logger.info(
+                    f"Mechanics agent fixed {mechanics_report.get('total_issues', 0)} issues "
+                    f"in task {task_id}"
+                )
+        except Exception as me:
+            mechanics_report = {}
+            logger.warning(f"Mechanics agent skipped for task {task_id}: {me}")
+
         # Mark as completed with result
         await db.compilation_tasks.update_one(
             {"id": task_id},
@@ -80,6 +96,7 @@ async def run_compilation_task(task_id: str, user_id: str, request_data: dict):
                 "$set": {
                     "status": TaskStatus.COMPLETED,
                     "spec": spec,
+                    "mechanics_report": mechanics_report,
                     "completed_at": datetime.now(timezone.utc)
                 }
             }
