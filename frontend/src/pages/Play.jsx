@@ -256,8 +256,16 @@ const Play = () => {
     );
   }
 
-  // Check if game has a valid spec
-  if (!activeGame?.spec || !activeGame?.spec?.content?.questions?.length) {
+  // Check if game has playable content (puzzle games use puzzle_config.rounds_data, others use questions)
+  const isSpecPlayable = (spec) => {
+    if (!spec) return false;
+    if (spec?.meta?.game_type === 'puzzle') {
+      return (spec?.puzzle_config?.rounds_data?.length || 0) > 0;
+    }
+    return (spec?.content?.questions?.length || 0) > 0;
+  };
+
+  if (!activeGame?.spec || !isSpecPlayable(activeGame.spec)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
         <Card className="max-w-md w-full">
@@ -312,7 +320,9 @@ const Play = () => {
               <h1 className="font-semibold text-foreground">{activeGame?.title}</h1>
               <div className="flex items-center gap-2">
                 <p className="text-xs text-muted-foreground">
-                  {activeGame?.spec?.content?.questions?.length || 0} questions
+                  {activeGame?.spec?.meta?.game_type === 'puzzle'
+                    ? `${activeGame?.spec?.puzzle_config?.rounds_data?.length || 0} rounds`
+                    : `${activeGame?.spec?.content?.questions?.length || 0} questions`}
                 </p>
                 {effectiveStudentMode && studentAssignment && (
                   <Badge variant="secondary" className="text-xs">

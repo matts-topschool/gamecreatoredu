@@ -7,6 +7,7 @@ import GameRuntime from './GameRuntime';
 import BattleRuntime from './BattleRuntime';
 import EnhancedBattleRuntime from '../../game/EnhancedBattleRuntime';
 import EnhancedAdventureRuntime from '../../game/EnhancedAdventureRuntime';
+import PuzzleRuntime from '../../game/PuzzleRuntime';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Gamepad2, Construction, Sparkles } from 'lucide-react';
@@ -129,9 +130,18 @@ const GameRuntimeSelector = ({
         />
       );
     
+    case 'puzzle':
+      return (
+        <PuzzleRuntime
+          spec={spec}
+          onComplete={onComplete}
+          onExit={onExit}
+          colorScheme={spec?.puzzle_visuals?.color_scheme}
+        />
+      );
+
     // Future game types - for now, fall back to quiz or show coming soon
     case 'platformer':
-    case 'puzzle':
     case 'simulation':
       if (fallbackToQuiz) {
         // Use quiz runtime with a notice

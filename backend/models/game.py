@@ -316,7 +316,7 @@ class GameSpec(BaseModel):
     This JSON document fully describes an educational game.
     """
     model_config = ConfigDict(extra="allow")  # Allow extra fields for flexibility
-    
+
     version: str = "1.0"
     meta: GameMeta
     assets: GameAssets = Field(default_factory=GameAssets)
@@ -328,6 +328,9 @@ class GameSpec(BaseModel):
     # Battle game specific fields
     entities: Optional[Dict[str, Any]] = None
     battle_config: Optional[Dict[str, Any]] = None
+    # Puzzle game specific fields
+    puzzle_config: Optional[Dict[str, Any]] = None
+    puzzle_visuals: Optional[Dict[str, Any]] = None
 
 
 # ============== Game Model ==============

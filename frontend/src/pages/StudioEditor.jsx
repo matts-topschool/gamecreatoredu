@@ -67,6 +67,7 @@ import PublishDialog from '@/components/studio/PublishDialog';
 import AssignToClassDialog from '@/components/game/AssignToClassDialog';
 import ThemeSelector from '@/game/ThemeSelector';
 import AdventureWorldSelector from '@/game/AdventureWorldSelector';
+import { PuzzleConfigEditor, PuzzleRoundsEditor } from '@/components/studio/PuzzleConfigEditor';
 import api from '@/services/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -697,35 +698,49 @@ const StudioEditor = () => {
 
             {/* Questions Tab */}
             <TabsContent value="questions" className="mt-4">
-              <Card>
-                <CardHeader className="flex-row items-center justify-between space-y-0">
-                  <CardTitle className="text-lg">
-                    Questions ({currentSpec?.content?.questions?.length || 0})
-                  </CardTitle>
-                  <Button onClick={addQuestion} size="sm" data-testid="add-question-btn">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Question
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {currentSpec?.content?.questions?.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <HelpCircle className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                      <p>No questions yet</p>
-                      <p className="text-sm">Click "Add Question" to create your first question</p>
-                    </div>
-                  )}
-                  {currentSpec?.content?.questions?.map((q, i) => (
-                    <QuestionEditor
-                      key={q.id || i}
-                      question={q}
-                      index={i}
-                      onChange={(updated) => updateQuestion(i, updated)}
-                      onDelete={() => deleteQuestion(i)}
+              {currentSpec?.meta?.game_type === 'puzzle' ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Puzzle Rounds</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <PuzzleRoundsEditor
+                      puzzleConfig={currentSpec?.puzzle_config || {}}
+                      onChange={(cfg) => updateSpec('puzzle_config', cfg)}
                     />
-                  ))}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader className="flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-lg">
+                      Questions ({currentSpec?.content?.questions?.length || 0})
+                    </CardTitle>
+                    <Button onClick={addQuestion} size="sm" data-testid="add-question-btn">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Question
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {currentSpec?.content?.questions?.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <HelpCircle className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p>No questions yet</p>
+                        <p className="text-sm">Click "Add Question" to create your first question</p>
+                      </div>
+                    )}
+                    {currentSpec?.content?.questions?.map((q, i) => (
+                      <QuestionEditor
+                        key={q.id || i}
+                        question={q}
+                        index={i}
+                        onChange={(updated) => updateQuestion(i, updated)}
+                        onDelete={() => deleteQuestion(i)}
+                      />
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Visuals Tab - Battle & Adventure Game Customization */}
@@ -754,6 +769,13 @@ const StudioEditor = () => {
                   onSceneCountChange={(count) => updateSpec('adventure_config.scene_count', count)}
                   questionsPerScene={currentSpec?.adventure_config?.questions_per_scene || 2}
                   onQuestionsPerSceneChange={(count) => updateSpec('adventure_config.questions_per_scene', count)}
+                />
+              ) : currentSpec?.meta?.game_type === 'puzzle' ? (
+                <PuzzleConfigEditor
+                  puzzleConfig={currentSpec?.puzzle_config || {}}
+                  onPuzzleConfigChange={(cfg) => updateSpec('puzzle_config', cfg)}
+                  puzzleVisuals={currentSpec?.puzzle_visuals || {}}
+                  onPuzzleVisualsChange={(vis) => updateSpec('puzzle_visuals', vis)}
                 />
               ) : (
                 <Card>

@@ -55,11 +55,21 @@ For PLATFORMER games:
 - Level progression from easy to hard
 """,
     "puzzle": """
-For PUZZLE games:
-- Include matching, sorting, or categorization challenges
-- Questions can be "arrange these in order" or "match pairs"
-- Support drag-and-drop style interactions
-- Include visual/spatial reasoning elements
+For PUZZLE games — use puzzle_config instead of content.questions:
+- Choose ONE sub_type based on the topic:
+    "sort"  — drag items into named category bins (classify, group, organize)
+    "match" — pair each term with its definition, translation, cause/effect
+    "order" — arrange items in the correct sequence (timeline, steps of a process)
+- Generate 2-3 rounds of increasing difficulty
+- Each item needs: id (unique string like "item_1"), label (displayed term), icon (1 relevant emoji), correct_bin (bin id)
+- For "order" sub_type: also include correct_position (1-indexed integer) on each item
+- For "match" sub_type: bins have is_prompt: true; items have role: "answer"
+- Bins represent categories/prompts/sequence — keep to 3-6 bins per round
+- Items per round: 4-10 items (lower grades = fewer items)
+- Set content.questions to an empty array []
+- Each round needs a clear "instruction" string and an "explanation" of the concept
+- Bin "hint" fields are strongly recommended for educational value
+- DO NOT repeat items across rounds; each round should teach a new facet of the topic
 """,
     "simulation": """
 For SIMULATION games:
@@ -151,6 +161,42 @@ FOR BATTLE GAMES - ADD THIS STRUCTURE:
     "player_damage_on_wrong": 20
   }
 }
+
+FOR PUZZLE GAMES - USE THIS STRUCTURE (instead of content.questions):
+{
+  "puzzle_config": {
+    "sub_type": "sort",
+    "rounds": 2,
+    "time_limit_seconds": 60,
+    "points_per_correct_placement": 100,
+    "partial_credit": true,
+    "show_labels_on_items": true,
+    "rounds_data": [
+      {
+        "id": "round_1",
+        "instruction": "Drag each animal into its correct vertebrate class",
+        "explanation": "Vertebrates are classified by skin covering, temperature regulation, and reproduction.",
+        "items": [
+          {"id": "item_1", "label": "Eagle", "icon": "🦅", "correct_bin": "bird"},
+          {"id": "item_2", "label": "Shark", "icon": "🦈", "correct_bin": "fish"},
+          {"id": "item_3", "label": "Wolf",  "icon": "🐺", "correct_bin": "mammal"}
+        ],
+        "bins": [
+          {"id": "bird",   "label": "Bird",   "icon": "🪶", "hint": "Has feathers and wings"},
+          {"id": "fish",   "label": "Fish",   "icon": "🐠", "hint": "Breathes with gills"},
+          {"id": "mammal", "label": "Mammal", "icon": "🐾", "hint": "Warm-blooded, live birth"}
+        ]
+      }
+    ]
+  },
+  "puzzle_visuals": {
+    "color_scheme": "nature"
+  },
+  "content": {"questions": []}
+}
+
+For "match" sub_type: bins have is_prompt: true, items have role: "answer", correct_bin = the bin id of the prompt they match.
+For "order" sub_type: one bin with id "sequence", items have correct_position (1-indexed integer).
 
 QUALITY GUIDELINES:
 1. Questions must be grade-appropriate and clearly worded
@@ -547,7 +593,29 @@ Output the COMPLETE updated GameSpec as valid JSON only."""
                 cfg["speed_bonus_threshold_seconds"] = 15
             if cfg.get("player_damage_on_wrong", 0) < 15:
                 cfg["player_damage_on_wrong"] = 20
-        
+
+        # For puzzle games, ensure puzzle_config block is valid
+        if spec["meta"].get("game_type") == "puzzle":
+            spec.setdefault("puzzle_config", {
+                "sub_type": "sort",
+                "rounds": 1,
+                "points_per_correct_placement": 100,
+                "partial_credit": True,
+                "show_labels_on_items": True,
+                "rounds_data": []
+            })
+            # Enforce valid sub_type
+            valid_sub_types = {"sort", "match", "order"}
+            if spec["puzzle_config"].get("sub_type") not in valid_sub_types:
+                spec["puzzle_config"]["sub_type"] = "sort"
+            # Keep rounds count in sync with actual data
+            rounds_data = spec["puzzle_config"].get("rounds_data", [])
+            spec["puzzle_config"]["rounds"] = len(rounds_data)
+            # Ensure puzzle_visuals
+            spec.setdefault("puzzle_visuals", {"color_scheme": "nature"})
+            # Puzzle games must have empty questions (not missing)
+            spec["content"]["questions"] = []
+
         return spec
 
 
